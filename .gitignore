@@ -1,0 +1,165 @@
+# ============================================================
+# .NET / C#
+# ============================================================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+[Dd]ebugPublic/
+[Rr]eleasePublic/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.ncb
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+*.pidb
+*.svclog
+*.scc
+*.publishsettings
+*.pubxml
+*.pubxml.user
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp_proj
+*_wpftmp.csproj
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+ScaffoldingReadMe.txt
+TestResult.xml
+*.coverage
+*.coveragexml
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+.dotcover
+*.ncrunchproject
+*.ncrunchsolution
+*.ncrunchmessage
+*.dotCover
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# ============================================================
+# IDE — Visual Studio
+# ============================================================
+.vs/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.opendb
+
+# ============================================================
+# IDE — VSCode
+# ============================================================
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ============================================================
+# IDE — Rider / JetBrains
+# ============================================================
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# ============================================================
+# OS — Windows
+# ============================================================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# ============================================================
+# OS — Linux / Mac
+# ============================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*~
+
+# ============================================================
+# Secrets & configuration locale
+# ============================================================
+.env
+.env.*
+!.env.example
+appsettings.local.json
+appsettings.*.local.json
+secrets.json
+**/secrets.json
+
+# ============================================================
+# Docker
+# ============================================================
+.dockerignore.local
+
+# ============================================================
+# Logs & temporaires
+# ============================================================
+*.log
+*.tmp
+*.temp
+coverage/
+TestResults/

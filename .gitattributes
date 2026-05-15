@@ -1,0 +1,76 @@
+# ============================================================
+# Normalisation automatique des fins de ligne
+# LF dans le dépôt, conversion auto selon l'OS au checkout
+# ============================================================
+* text=auto eol=lf
+
+# ============================================================
+# .NET / C#
+# ============================================================
+*.cs text eol=lf
+*.csproj text eol=lf
+*.sln text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
+*.razor text eol=lf
+*.cshtml text eol=lf
+*.resx text eol=lf
+
+# ============================================================
+# Scripts
+# ============================================================
+*.sh text eol=lf
+*.bash text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# ============================================================
+# Config / CI / Docker
+# ============================================================
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.xml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.env text eol=lf
+Dockerfile text eol=lf
+*.dockerignore text eol=lf
+
+# ============================================================
+# Binaires — images
+# ============================================================
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.webp binary
+
+# ============================================================
+# Binaires — polices
+# ============================================================
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+
+# ============================================================
+# Binaires — archives
+# ============================================================
+*.zip binary
+*.tar binary
+*.gz binary
+*.7z binary
+
+# ============================================================
+# Binaires — documents
+# ============================================================
+*.pdf binary
+*.doc binary
+*.docx binary
+*.xls binary
+*.xlsx binary
