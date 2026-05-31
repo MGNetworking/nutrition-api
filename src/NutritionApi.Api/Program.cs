@@ -1,6 +1,10 @@
+using NutritionApi.Application;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Services
+    .AddOpenApi()
+    .AddApplication();
 
 var app = builder.Build();
 

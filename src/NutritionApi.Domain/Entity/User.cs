@@ -1,5 +1,6 @@
+using NutritionApi.Domain.Enums;
+
 namespace NutritionApi.Domain.Entity;
-using Enums;
 
 public class User
 {
@@ -14,6 +15,7 @@ public class User
     public SubscriptionTier SubscriptionTier { get; private set; } = SubscriptionTier.Free;
     public DateTime CreatedAt { get; private set; }
     public DateTime? DeletedAt { get; private set; }
+
 
     // Pour EF Core uniquement — vide, EF remplit tout via réflexion
     private User() { }
@@ -68,7 +70,7 @@ public class User
         Height = height;
     }
 
-    private void SetListAllergen(List<Allergen> allergies)
+    public void SetListAllergen(List<Allergen> allergies)
     {
         ArgumentNullException.ThrowIfNull(allergies);
         Allergies = allergies;
@@ -88,7 +90,7 @@ public class User
         Allergies.Remove(allergen);
     }
 
-    private void SetDietaryPreference(List<string> dietaryPreferences)
+    public void SetDietaryPreference(List<string> dietaryPreferences)
     {
         ArgumentNullException.ThrowIfNull(dietaryPreferences);
         DietaryPreferences = dietaryPreferences;
@@ -118,7 +120,7 @@ public class User
             throw new ArgumentException("Subscription must be defined.", nameof(tier));
 
         SubscriptionTier = tier;
-        
+
     }
 
     public void MarkAsDeleted()
@@ -127,4 +129,6 @@ public class User
             throw new InvalidOperationException("User account is already marked for deletion.");
         DeletedAt = DateTime.UtcNow;
     }
+
+
 }

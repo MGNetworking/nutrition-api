@@ -108,22 +108,15 @@ public class UserTest
     [Fact]
     public void SetListAllergen_ArgumentNullExceptionTest()
     {
-        Assert.Throws<ArgumentNullException>(() => new User(
-            keycloakId: "test-user",
-            birthDate: DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-25)),
-            gender: Gender.Male,
-            activityLevel: ActivityLevel.Sedentary,
-            Height,
-            allergies: null,
-            dietaryPreferences: new List<string>())
-        );
+        Assert.Throws<ArgumentNullException>(() => CreateUser().SetListAllergen(null!));
     }
 
     [Fact]
     public void SetListAllergen_OkTest()
     {
         var allergies = new List<Allergen> { Allergen.Gluten };
-        User user = CreateUser(allergens: allergies);
+        User user = CreateUser();
+        user.SetListAllergen(allergies);
         Assert.Equal(allergies, user.Allergies);
 
     }
@@ -189,22 +182,15 @@ public class UserTest
     [Fact]
     public void SetDietaryPreference_ArgumentNullExceptionTest()
     {
-        Assert.Throws<ArgumentNullException>(() => new User(
-            keycloakId: "test-user",
-            birthDate: DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-25)),
-            gender: Gender.Male,
-            activityLevel: ActivityLevel.Sedentary,
-            Height,
-            allergies: new List<Allergen>(),
-            dietaryPreferences: null)
-        );
+        Assert.Throws<ArgumentNullException>(() => CreateUser().SetDietaryPreference(null!));
     }
 
     [Fact]
     public void SetDietaryPreference_OkTest()
     {
         var preferences = new List<string> { "VEGAN" };
-        User user = CreateUser(preferences: preferences);
+        User user = CreateUser();
+        user.SetDietaryPreference(preferences);
         Assert.Equal(preferences, user.DietaryPreferences);
     }
 
