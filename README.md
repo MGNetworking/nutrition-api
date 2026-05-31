@@ -92,6 +92,18 @@ Le rapport est généré dans `coverage/report/index.html`.
 
 ---
 
+## Gestion des branches
+
+Ce projet suit un workflow `feature/* → dev → prod → main`.
+
+- `dev` — intégration, toutes les features y sont mergées via squash PR
+- `prod` — production, alimentée depuis `dev`, déclenche le déploiement VPS
+- `main` — releases stables taguées (`vX.Y.Z`)
+
+Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour le workflow complet, les conventions de commit et les règles de protection de branches.
+
+---
+
 ## Version
 
 Voir [CHANGELOG.md](CHANGELOG.md) — géré automatiquement par [Release Please](https://github.com/googleapis/release-please).
