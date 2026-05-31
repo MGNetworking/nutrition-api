@@ -140,6 +140,14 @@ $RECYCLE.BIN/
 *~
 
 # ============================================================
+# Notes locales (non versionnées)
+# ============================================================
+ARCHITECTURE-DRAFT.md
+CONCEPTS.md
+AUTOMATISATION.md
+TICKETS-A-MODIFIER.md
+
+# ============================================================
 # Secrets & configuration locale
 # ============================================================
 .env
@@ -163,3 +171,6 @@ secrets.json
 *.temp
 coverage/
 TestResults/
+
+# Fichiers locaux
+CONFIGURATION.md
