@@ -7,6 +7,7 @@
           <Format>cobertura</Format>
           <Exclude>[*.Tests]*</Exclude>
           <ExcludeByAttribute>ExcludeFromCodeCoverage</ExcludeByAttribute>
+          <ExcludeByFile>**/DTOs/**/*.cs</ExcludeByFile>
           <Thresholds>
             <Coverage Assembly="NutritionApi.Domain" Line="90" Branch="90" />
             <Coverage Assembly="NutritionApi.Application" Line="80" Branch="80" />

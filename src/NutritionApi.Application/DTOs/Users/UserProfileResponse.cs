@@ -1,6 +1,6 @@
-﻿namespace NutritionApi.Application.DTOS.Users;
+﻿using NutritionApi.Domain.Enums;
 
-using NutritionApi.Domain.Enums;
+namespace NutritionApi.Application.DTOS.Users;
 
 public record UserProfileResponse(
     Guid Id,

@@ -1,3 +1,4 @@
+
 namespace NutritionApi.Application.DTOS.Admin;
 
 public record UsersByTierResponse(int Free, int Pro, int Business);

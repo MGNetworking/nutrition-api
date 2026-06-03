@@ -9,6 +9,8 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ajout des dépendance dans mon conteneur d'injection
+
 builder.Services.AddScoped<ExceptionMiddleware>();
 
 builder.Services.AddApplication();
@@ -77,7 +79,9 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddScoped<UserResolutionMiddleware>();
 
+// Construction de l'application
 var app = builder.Build();
+
 
 // Uniquement hors production
 if (!app.Environment.IsProduction())
@@ -86,6 +90,9 @@ if (!app.Environment.IsProduction())
     app.UseSwaggerUI(options =>
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Nutrition API v1"));
 }
+
+
+// pipeline de traitement des requêtes HTTP
 
 app.UseHttpsRedirection();  // inclus dans le Web SDK
 // TODO : configurer AddCors() dans builder.Services

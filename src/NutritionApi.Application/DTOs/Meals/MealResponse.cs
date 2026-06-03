@@ -1,6 +1,6 @@
-namespace NutritionApi.Application.DTOS.Meals;
-
 using NutritionApi.Domain.Enums;
+
+namespace NutritionApi.Application.DTOS.Meals;
 
 public record MealResponse(
     Guid Id,

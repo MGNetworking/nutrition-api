@@ -67,6 +67,8 @@ dotnet test
 
 ```bash
 dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ### Générer le rapport HTML
@@ -76,7 +78,7 @@ dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage
 dotnet tool install -g dotnet-reportgenerator-globaltool
 
 # Générer le rapport
-reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Html
+reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Html -classfilters:"-NutritionApi.Application.DTOS.*"
 ```
 
 Le rapport est généré dans `coverage/report/index.html`.

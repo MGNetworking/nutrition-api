@@ -142,10 +142,14 @@ $RECYCLE.BIN/
 # ============================================================
 # Notes locales (non versionnées)
 # ============================================================
-ARCHITECTURE-DRAFT.md
+ARCHITECTURE-DDD-4-COUCHES.md
+ARCHITECTURE-CQRS.md
+ARCHITECTURE-HEXAGONALE.md
 CONCEPTS.md
 AUTOMATISATION.md
 TICKETS-A-MODIFIER.md
+TDD.md
+SDD.md
 
 # ============================================================
 # Secrets & configuration locale

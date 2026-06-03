@@ -1,6 +1,7 @@
+using NutritionApi.Application.DTOS.FoodItems;
+
 namespace NutritionApi.Application.Interfaces.Services;
 
-using NutritionApi.Application.DTOS.FoodItems;
 
 public interface IFoodItemService
 {

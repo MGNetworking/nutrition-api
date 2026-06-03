@@ -1,6 +1,6 @@
-namespace NutritionApi.Application.DTOS.DietPlans;
-
 using NutritionApi.Domain.Enums;
+
+namespace NutritionApi.Application.DTOS.DietPlans;
 
 public record CreateDietPlanRequest(
     string Name,

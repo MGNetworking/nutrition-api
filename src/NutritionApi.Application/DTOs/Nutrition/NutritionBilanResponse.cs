@@ -1,3 +1,4 @@
+
 namespace NutritionApi.Application.DTOS.Nutrition;
 
 public record DailyBreakdownEntry(DateOnly Date, float Calories, float Proteins, float Carbs, float Fats);

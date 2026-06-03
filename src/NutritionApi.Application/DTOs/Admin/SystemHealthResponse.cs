@@ -1,3 +1,4 @@
+
 namespace NutritionApi.Application.DTOS.Admin;
 
 public record HangfireJobResponse(string JobName, DateTime? LastRun, DateTime? NextRun, string Status);

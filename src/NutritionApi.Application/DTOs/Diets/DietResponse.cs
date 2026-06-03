@@ -1,7 +1,7 @@
-namespace NutritionApi.Application.DTOS.Diets;
-
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Domain.Enums;
+
+namespace NutritionApi.Application.DTOS.Diets;
 
 public record DietResponse(
     Guid Id,
