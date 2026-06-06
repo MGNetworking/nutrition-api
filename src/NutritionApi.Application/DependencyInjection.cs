@@ -1,14 +1,14 @@
-﻿namespace NutritionApi.Application;
+namespace NutritionApi.Application;
 
 using Microsoft.Extensions.DependencyInjection;
+using Interfaces.Services;
 using Services;
 
 public static class ApplicationExtensions
 {
-    public static IServiceCollection AddApplication(this IServiceCollection service)
+    public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        service.AddScoped<UserService>();
-
-        return service;
+        services.AddScoped<IUserService, UserService>();
+        return services;
     }
 }

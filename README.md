@@ -67,6 +67,8 @@ dotnet test
 
 ```bash
 dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ### Générer le rapport HTML
@@ -76,7 +78,7 @@ dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage
 dotnet tool install -g dotnet-reportgenerator-globaltool
 
 # Générer le rapport
-reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Html
+reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Html -classfilters:"-NutritionApi.Application.DTOS.*"
 ```
 
 Le rapport est généré dans `coverage/report/index.html`.
@@ -89,6 +91,18 @@ Le rapport est généré dans `coverage/report/index.html`.
 | Application | 80 % |
 | Infrastructure | 70 % |
 | API | 70 % |
+
+---
+
+## Gestion des branches
+
+Ce projet suit un workflow `feature/* → dev → prod → main`.
+
+- `dev` — intégration, toutes les features y sont mergées via squash PR
+- `prod` — production, alimentée depuis `dev`, déclenche le déploiement VPS
+- `main` — releases stables taguées (`vX.Y.Z`)
+
+Voir [CONTRIBUTING.md](CONTRIBUTING.md) pour le workflow complet, les conventions de commit et les règles de protection de branches.
 
 ---
 
