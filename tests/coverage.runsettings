@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>[*.Tests]*</Exclude>
+          <ExcludeByAttribute>ExcludeFromCodeCoverage</ExcludeByAttribute>
+          <ExcludeByFile>**/DTOs/**/*.cs,**/Program.cs,**/DependencyInjection.cs</ExcludeByFile>
+          <Thresholds>
+            <Coverage Assembly="NutritionApi.Domain" Line="90" Branch="90" />
+            <Coverage Assembly="NutritionApi.Application" Line="80" Branch="80" />
+            <Coverage Assembly="NutritionApi.Infrastructure" Line="70" Branch="70" />
+            <Coverage Assembly="NutritionApi.Api" Line="70" Branch="70" />
+          </Thresholds>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
