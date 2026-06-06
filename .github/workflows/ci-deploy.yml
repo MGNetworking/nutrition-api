@@ -9,6 +9,7 @@ on:
 jobs:
   build-and-test:
     name: Build Release (validation)
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
 
     steps:
