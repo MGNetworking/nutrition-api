@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NutritionApi.Infrastructure\NutritionApi.Infrastructure.csproj" />
+    <ProjectReference Include="..\NutritionApi.Application\NutritionApi.Application.csproj" />
+    <ProjectReference Include="..\NutritionApi.Domain\NutritionApi.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
