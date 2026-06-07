@@ -5,7 +5,10 @@ using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.FoodItems;
 using NutritionApi.Application.DTOS.Users;
 using NutritionApi.Application.Interfaces.Services;
+using System.IO.Compression;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 
 namespace NutritionApi.Api.Controllers;
@@ -17,11 +20,13 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
     private readonly IFoodItemService _foodItemService;
+    private readonly IRgpdService _rgpdService;
 
-    public UsersController(IUserService userService, IFoodItemService foodItemService)
+    public UsersController(IUserService userService, IFoodItemService foodItemService, IRgpdService rgpdService)
     {
         _userService = userService;
         _foodItemService = foodItemService;
+        _rgpdService = rgpdService;
     }
 
 
@@ -89,9 +94,29 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> ExportData()
     {
         var userKcId = HttpContext.User.FindFirstValue("sub")!;
-        var exportData = await _userService.ExportUserDataAsync(userKcId);
+        var exportData = await _rgpdService.ExportUserDataAsync(userKcId);
 
-        return Ok(exportData);
+        // Sérialiser le DTO en JSON lisible
+        var json = JsonSerializer.Serialize(exportData, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+        var jsonBytes = Encoding.UTF8.GetBytes(json);
+
+        // Créer le ZIP en mémoire
+        using var memoryStream = new MemoryStream();
+        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = archive.CreateEntry("User-Data.json");
+            using var entryStream = entry.Open();
+            entryStream.Write(jsonBytes);
+        }
+
+        return File(
+            memoryStream.ToArray(),
+            "application/zip",
+            $"export-{DateTime.UtcNow:yyyy-MM-dd}.zip"
+        );
 
     }
 

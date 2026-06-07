@@ -28,20 +28,56 @@ public class UserServiceTest
                   _unitOfWorkMock.Object);
     }
 
+    private (User, UpdateUserProfileRequest, CreateUserProfileRequest) UserHelper(string kcId = null!)
+    {
+        var keycloakId = kcId ?? "keycloak-123";
+        var birthDate = new DateOnly(1990, 1, 1);
+        var gender = Gender.Male;
+        var activityLevel = ActivityLevel.LightlyActive;
+        var height = 180f;
+        var allergies = new List<Allergen>();
+        var DietaryPreferences = new List<string>();
+
+        var createUser = new CreateUserProfileRequest(
+                birthDate: birthDate,
+                gender: gender,
+                activityLevel: activityLevel,
+                height: height,
+                allergies: new List<Allergen>(),
+                dietaryPreferences: DietaryPreferences,
+                weight: 75f
+                );
+
+        var updateUser = new UpdateUserProfileRequest(
+               BirthDate: birthDate,
+               Gender: gender,
+               ActivityLevel: ActivityLevel.LightlyActive,
+               Height: height,
+               Allergies: allergies,
+               DietaryPreferences: DietaryPreferences
+           );
+
+        var user = new User(
+                keycloakId: keycloakId,
+                birthDate: birthDate,
+                gender: gender,
+                activityLevel: activityLevel,
+                height: height,
+                allergies: allergies,
+                dietaryPreferences: DietaryPreferences
+            );
+
+        return (user, updateUser, createUser);
+    }
+
+    // --- CreateUserProfileAsync ---
+
     [Fact]
     public async Task CreateUserProfileAsync_Success_ReturnsUserProfileResponse()
     {
         // Arrange
         var keycloakId = "keycloak-123";
-        var request = new CreateUserProfileRequest(
-            birthDate: new DateOnly(1990, 1, 1),
-            gender: Gender.Male,
-            activityLevel: ActivityLevel.LightlyActive,
-            height: 180f,
-            allergies: new List<Allergen>(),
-            dietaryPreferences: new List<string>(),
-            weight: 75f
-        );
+        var (_, _, CreateUser) = UserHelper(keycloakId);
 
         _userRepositoryMock
             .Setup(r => r.GetByKeycloakIdAsync(keycloakId))
@@ -52,12 +88,12 @@ public class UserServiceTest
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _userService.CreateUserProfileAsync(keycloakId, request);
+        var result = await _userService.CreateUserProfileAsync(keycloakId, CreateUser);
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(request.birthDate, result.BirthDate);
-        Assert.Equal(request.gender, result.Gender);
+        Assert.Equal(CreateUser.birthDate, result.BirthDate);
+        Assert.Equal(CreateUser.gender, result.Gender);
         Assert.Equal(SubscriptionTier.Free, result.SubscriptionTier);
 
         _userRepositoryMock.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Once);
@@ -70,26 +106,15 @@ public class UserServiceTest
     {
         // Arrange
         var keycloakId = "keycloak-123";
-        var request = new CreateUserProfileRequest(
-            birthDate: new DateOnly(1990, 1, 1),
-            gender: Gender.Male,
-            activityLevel: ActivityLevel.LightlyActive,
-            height: 180f,
-            allergies: new List<Allergen>(),
-            dietaryPreferences: new List<string>(),
-            weight: 75f
-        );
-
-        var existingUser = new User(keycloakId, new DateOnly(1990, 1, 1), Gender.Male,
-            ActivityLevel.LightlyActive, 180f, new List<Allergen>(), new List<string>());
+        var (user, _, CreateUser) = UserHelper(keycloakId);
 
         _userRepositoryMock
             .Setup(r => r.GetByKeycloakIdAsync(keycloakId))
-            .ReturnsAsync(existingUser);
+            .ReturnsAsync(user);
 
         // Act & Assert
         await Assert.ThrowsAsync<ConflictException>(() =>
-            _userService.CreateUserProfileAsync(keycloakId, request));
+            _userService.CreateUserProfileAsync(keycloakId, CreateUser));
 
         _userRepositoryMock.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Never);
         _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
@@ -97,19 +122,14 @@ public class UserServiceTest
 
 
 
+    // --- UpdateUserProfileAsync ---
+
     [Fact]
     public async Task UpdateUserProfileAsync_UserNotFound_ThrowsNotFoundException()
     {
         // Arrange
         string keycloakId = "keycloak-123";
-        var updateUser = new UpdateUserProfileRequest(
-            BirthDate: new DateOnly(1990, 1, 1),
-            Gender: Gender.Male,
-            ActivityLevel: ActivityLevel.LightlyActive,
-            Height: 180f,
-            Allergies: new List<Allergen>(),
-            DietaryPreferences: new List<string>()
-        );
+        var (_, updateUser, _) = UserHelper(keycloakId);
 
         _userRepositoryMock
             .Setup(r => r.GetByKeycloakIdAsync(keycloakId))
@@ -126,24 +146,7 @@ public class UserServiceTest
 
         // Arrange
         string keycloakId = "keycloak-123";
-        var updateUser = new UpdateUserProfileRequest(
-            BirthDate: new DateOnly(1990, 1, 1),
-            Gender: Gender.Male,
-            ActivityLevel: ActivityLevel.LightlyActive,
-            Height: 180f,
-            Allergies: new List<Allergen>(),
-            DietaryPreferences: new List<string>()
-        );
-
-        var user = new User(
-            keycloakId: keycloakId,
-            birthDate: new DateOnly(1990, 1, 1),
-            gender: Gender.Male,
-            activityLevel: ActivityLevel.LightlyActive,
-            height: 180f,
-            allergies: new List<Allergen>(),
-            dietaryPreferences: new List<string>()
-        );
+        var (user, updateUser, _) = UserHelper(keycloakId);
 
         _userRepositoryMock
             .Setup(r => r.GetByKeycloakIdAsync(keycloakId))
@@ -171,5 +174,158 @@ public class UserServiceTest
         _userRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<User>()), Times.Once());
         _unitOfWorkMock.Verify(r => r.SaveChangesAsync(), Times.Once());
     }
+
+    // --- GetUserProfileAsync ---
+
+    [Fact]
+    public async Task GetUserProfileAsync_UserFound_ReturnsUserProfileResponse()
+    {
+        // Arrange
+        string keycloakId = "keycloak-123";
+        var (user, _, _) = UserHelper(keycloakId);
+
+        _userRepositoryMock
+            .Setup(s => s.GetByKeycloakIdAsync(keycloakId))
+            .ReturnsAsync(user);
+
+        // Act 
+        var result = await _userService.GetUserProfileAsync(keycloakId);
+
+        // Assert
+        Assert.NotNull(result);
+        _userRepositoryMock.Verify(s => s.GetByKeycloakIdAsync(keycloakId), Times.Once());
+
+    }
+
+    [Fact]
+    public async Task GetUserProfileAsync_UserNotFound_ThrowsNotFoundException()
+    {
+        // Arrange
+        string keycloakId = "keycloak-123";
+
+        _userRepositoryMock
+            .Setup(s => s.GetByKeycloakIdAsync(keycloakId))
+            .ReturnsAsync((User?)null);
+
+        // Act / Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.GetUserProfileAsync(keycloakId));
+
+    }
+
+    // --- DeleteUserAsync ---
+
+    [Fact]
+    public async Task DeleteUserAsync_Success_CompletesWithoutError()
+    {
+        // Arrange
+        string keycloakId = "keycloak-123";
+        var (user, _, _) = UserHelper(keycloakId);
+
+        _userRepositoryMock
+            .Setup(s => s.GetByKeycloakIdAsync(keycloakId))
+            .ReturnsAsync(user);
+
+        // Act
+        await _userService.DeleteUserAsync(keycloakId);
+
+        // Assert
+        Assert.NotNull(user.DeletedAt);
+    }
+
+    [Fact]
+    public async Task DeleteUserAsync_UserNotFound_ThrowsNotFoundException()
+    {
+        // Arrange
+        string keycloakId = "keycloak-123";
+        _userRepositoryMock
+            .Setup(s => s.GetByKeycloakIdAsync(keycloakId))
+            .ReturnsAsync((User?)null);
+
+        // Act / Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.DeleteUserAsync(keycloakId));
+
+    }
+
+    // --- ReactivateUserAsync ---
+
+    [Fact]
+    public async Task ReactivateUserAsync_Success_ReturnsUserProfileResponse()
+    {
+        // Arrange 
+        string keycloakId = "keycloak-123";
+        var (user, _, _) = UserHelper(keycloakId);
+        user.MarkAsDeleted();
+        _userRepositoryMock
+            .Setup(s => s.GetByKeycloakIdAsync(keycloakId))
+            .ReturnsAsync(user);
+
+        // Act
+        await _userService.ReactivateUserAsync(keycloakId);
+
+        // Assert
+        Assert.Null(user.DeletedAt);
+    }
+
+    [Fact]
+    public async Task ReactivateUserAsync_UserNotFound_ThrowsNotFoundException()
+    {
+        // Arrange
+        string keycloakId = "keycloak-123";
+        _userRepositoryMock
+            .Setup(s => s.GetByKeycloakIdAsync(keycloakId))
+            .ReturnsAsync((User?)null);
+
+        // Act / Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.ReactivateUserAsync(keycloakId));
+
+    }
+
+    // --- ExportUserDataAsync ---
+
+    [Fact]
+    public async Task ExportUserDataAsync_Success_ReturnsExportedData()
+        => throw new NotImplementedException();
+
+    [Fact]
+    public async Task ExportUserDataAsync_UserNotFound_ThrowsNotFoundException()
+        => throw new NotImplementedException();
+
+    // --- AddWeightEntryAsync ---
+
+    [Fact]
+    public async Task AddWeightEntryAsync_Success_ReturnsWeightEntryResponse()
+        => throw new NotImplementedException();
+
+    [Fact]
+    public async Task AddWeightEntryAsync_DuplicateDate_ThrowsConflictException()
+        => throw new NotImplementedException();
+
+    [Fact]
+    public async Task AddWeightEntryAsync_UserNotFound_ThrowsNotFoundException()
+        => throw new NotImplementedException();
+
+    // --- GetWeightHistoryAsync ---
+
+    [Fact]
+    public async Task GetWeightHistoryAsync_Success_ReturnsWeightEntryList()
+        => throw new NotImplementedException();
+
+    [Fact]
+    public async Task GetWeightHistoryAsync_UserNotFound_ThrowsNotFoundException()
+        => throw new NotImplementedException();
+
+    // --- UpdateWeightEntryAsync ---
+
+    [Fact]
+    public async Task UpdateWeightEntryAsync_Success_ReturnsWeightEntryResponse()
+        => throw new NotImplementedException();
+
+    [Fact]
+    public async Task UpdateWeightEntryAsync_EntryNotFound_ThrowsNotFoundException()
+        => throw new NotImplementedException();
+
+    [Fact]
+    public async Task UpdateWeightEntryAsync_UserNotFound_ThrowsNotFoundException()
+        => throw new NotImplementedException();
 
 }

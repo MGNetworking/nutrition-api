@@ -130,5 +130,11 @@ public class User
         DeletedAt = DateTime.UtcNow;
     }
 
+    public void Reactivate()
+    {
+        if (DeletedAt is null)
+            throw new InvalidOperationException("User is not deleted.");
 
+        DeletedAt = null;
+    }
 }

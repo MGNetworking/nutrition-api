@@ -7,6 +7,9 @@ using NutritionApi.Api.Controllers;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.Users;
 using NutritionApi.Application.DTOS.FoodItems;
+using NutritionApi.Application.DTOS.DietPlans;
+using NutritionApi.Application.DTOS.Diets;
+using NutritionApi.Application.DTOS.Meals;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Domain.Enums;
 using System.Security.Claims;
@@ -15,11 +18,15 @@ public class UsersControllerTest
 {
     private readonly Mock<IUserService> _mockUserService = new();
     private readonly Mock<IFoodItemService> _mockFoodItemService = new();
+    private readonly Mock<IRgpdService> _mockRgpdService = new();
     private readonly UsersController _usersController;
 
     public UsersControllerTest()
     {
-        _usersController = new UsersController(_mockUserService.Object, _mockFoodItemService.Object);
+        _usersController = new UsersController(
+            _mockUserService.Object,
+            _mockFoodItemService.Object,
+            _mockRgpdService.Object);
     }
 
     private string SetControllerContextClaim(string kcUserId = null!, Guid? userId = null)
@@ -184,9 +191,18 @@ public class UsersControllerTest
     {
         // Arrange
         var userKcId = this.SetControllerContextClaim();
-        var exportData = new object();
+        var (_, userProfileResponse, _) = this.BuildUserProfileData();
 
-        _mockUserService
+        var exportData = new UserExportResponse(
+            Profile: userProfileResponse,
+            WeightHistory: new List<WeightEntryResponse>(),
+            DietPlans: new List<DietPlanResponse>(),
+            Diets: new List<DietResponse>(),
+            Meals: new List<MealResponse>(),
+            SavedFoodItems: new List<SavedFoodItemResponse>()
+        );
+
+        _mockRgpdService
             .Setup(s => s.ExportUserDataAsync(userKcId))
             .ReturnsAsync(exportData);
 
@@ -194,9 +210,11 @@ public class UsersControllerTest
         var result = await _usersController.ExportData();
 
         // Assert
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(exportData, ok.Value);
-        _mockUserService.Verify(s => s.ExportUserDataAsync(userKcId), Times.Once);
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/zip", file.ContentType);
+        Assert.StartsWith("export-", file.FileDownloadName);
+        Assert.EndsWith(".zip", file.FileDownloadName);
+        _mockRgpdService.Verify(s => s.ExportUserDataAsync(userKcId), Times.Once);
     }
 
     // -------------------------------------------------------------------------

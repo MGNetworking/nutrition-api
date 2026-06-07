@@ -1,9 +1,12 @@
+
+
 namespace NutritionApi.Application.Services;
 
 using Interfaces;
 using Interfaces.Repositories;
 using Interfaces.Services;
 using NutritionApi.Application.DTOS.Users;
+using static NutritionApi.Application.DTOs.Users.UserMappingDto;
 using NutritionApi.Application.Exceptions;
 using NutritionApi.Domain.Entity;
 
@@ -50,20 +53,18 @@ public class UserService : IUserService
         await _weightEntryRepository.AddAsync(weightEntry);
         await _unitOfWork.SaveChangesAsync();
 
-        return new UserProfileResponse(
-            user.Id,
-            user.BirthDate,
-            user.Gender,
-            user.ActivityLevel,
-            user.Height,
-            user.Allergies,
-            user.DietaryPreferences,
-            user.SubscriptionTier,
-            user.CreatedAt);
+        return UserToUserProfileResponse(user);
     }
 
-    public Task<UserProfileResponse> GetUserProfileAsync(string keycloakId)
-        => throw new NotImplementedException();
+    public async Task<UserProfileResponse> GetUserProfileAsync(string keycloakId)
+    {
+        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
+
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        return UserToUserProfileResponse(user);
+    }
 
     public async Task<UserProfileResponse> UpdateUserProfileAsync(
         string keycloakId,
@@ -84,33 +85,43 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
-        return new UserProfileResponse(
-            user.Id,
-            user.BirthDate,
-            user.Gender,
-            user.ActivityLevel,
-            user.Height,
-            user.Allergies,
-            user.DietaryPreferences,
-            user.SubscriptionTier,
-            user.CreatedAt);
+        return UserToUserProfileResponse(user);
     }
 
-    public Task DeleteUserAsync(string keycloakId)
+    public async Task DeleteUserAsync(string keycloakId)
+    {
+        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
+
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        user.MarkAsDeleted(); // c'est un soft delete
+
+        await _userRepository.UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task<UserProfileResponse> ReactivateUserAsync(string keycloakId)
+    {
+        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
+
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        user.Reactivate(); // c'est une reactivation soft 
+
+        await _userRepository.UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return UserToUserProfileResponse(user) as UserProfileResponse;
+    }
+
+    public async Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request)
         => throw new NotImplementedException();
 
-    public Task<UserProfileResponse> ReactivateUserAsync(string keycloakId)
+    public async Task<List<WeightEntryResponse>> GetWeightHistoryAsync(Guid userId)
         => throw new NotImplementedException();
 
-    public Task<object> ExportUserDataAsync(string keycloakId)
-        => throw new NotImplementedException();
-
-    public Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request)
-        => throw new NotImplementedException();
-
-    public Task<List<WeightEntryResponse>> GetWeightHistoryAsync(Guid userId)
-        => throw new NotImplementedException();
-
-    public Task<WeightEntryResponse> UpdateWeightEntryAsync(Guid userId, Guid entryId, UpdateWeightEntryRequest request)
+    public async Task<WeightEntryResponse> UpdateWeightEntryAsync(Guid userId, Guid entryId, UpdateWeightEntryRequest request)
         => throw new NotImplementedException();
 }

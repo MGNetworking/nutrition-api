@@ -9,7 +9,6 @@ public interface IUserService
     Task<UserProfileResponse> UpdateUserProfileAsync(string keycloakId, UpdateUserProfileRequest request);
     Task DeleteUserAsync(string keycloakId);
     Task<UserProfileResponse> ReactivateUserAsync(string keycloakId);
-    Task<object> ExportUserDataAsync(string keycloakId);
     Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request);
     Task<List<WeightEntryResponse>> GetWeightHistoryAsync(Guid userId);
     Task<WeightEntryResponse> UpdateWeightEntryAsync(Guid userId, Guid entryId, UpdateWeightEntryRequest request);
