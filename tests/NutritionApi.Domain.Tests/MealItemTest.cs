@@ -29,7 +29,7 @@ public class MealItemTest
         Guid foodItemId = Guid.NewGuid();
         NutritionInfo nutrition = DefaultNutrition();
 
-        MealItem item = new MealItem(mealId, foodItemId, 150.0f, nutrition);
+        MealItem item = CreateMealItem(mealId: mealId, foodItemId: foodItemId, nutrition: nutrition);
 
         Assert.NotEqual(Guid.Empty, item.Id);
         Assert.Equal(mealId, item.MealId);
@@ -61,10 +61,8 @@ public class MealItemTest
     [Fact]
     public void Constructor_Nutrition_Null_ThrowsArgumentNullExceptionTest()
     {
-        Assert.Throws<ArgumentNullException>(() => new MealItem(
-            mealId: Guid.NewGuid(),
-            foodItemId: Guid.NewGuid(),
-            quantity: 150.0f,
-            nutrition: null!));
+        Assert.Throws<ArgumentNullException>(() => CreateMealItem(nutrition: null!));
     }
+
+
 }

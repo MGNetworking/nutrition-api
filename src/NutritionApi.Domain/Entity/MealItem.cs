@@ -9,6 +9,7 @@ public class MealItem
     public Guid FoodItemId { get; init; }
     public float Quantity { get; private set; }
     public NutritionInfo Nutrition { get; private set; } = null!;
+    public FoodItem? FoodItem { get; init; }
 
     // Pour EF Core uniquement
     private MealItem() { }
@@ -21,6 +22,7 @@ public class MealItem
             throw new ArgumentException($"Meal ID cannot be empty. Received: {mealId}", nameof(mealId));
         if (foodItemId == Guid.Empty)
             throw new ArgumentException($"Food item ID cannot be empty. Received: {foodItemId}", nameof(foodItemId));
+
         MealId = mealId;
         FoodItemId = foodItemId;
 

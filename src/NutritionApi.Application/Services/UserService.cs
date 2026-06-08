@@ -1,12 +1,9 @@
-
-
 namespace NutritionApi.Application.Services;
 
 using Interfaces;
 using Interfaces.Repositories;
 using Interfaces.Services;
 using NutritionApi.Application.DTOS.Users;
-using static NutritionApi.Application.DTOs.Users.UserMappingDto;
 using NutritionApi.Application.Exceptions;
 using NutritionApi.Domain.Entity;
 
@@ -53,7 +50,7 @@ public class UserService : IUserService
         await _weightEntryRepository.AddAsync(weightEntry);
         await _unitOfWork.SaveChangesAsync();
 
-        return UserToUserProfileResponse(user);
+        return UserProfileResponse.From(user);
     }
 
     public async Task<UserProfileResponse> GetUserProfileAsync(string keycloakId)
@@ -63,7 +60,7 @@ public class UserService : IUserService
         if (user is null)
             throw new NotFoundException("User profile not found.");
 
-        return UserToUserProfileResponse(user);
+        return UserProfileResponse.From(user);
     }
 
     public async Task<UserProfileResponse> UpdateUserProfileAsync(
@@ -85,7 +82,7 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
-        return UserToUserProfileResponse(user);
+        return UserProfileResponse.From(user);
     }
 
     public async Task DeleteUserAsync(string keycloakId)
@@ -113,7 +110,7 @@ public class UserService : IUserService
         await _userRepository.UpdateAsync(user);
         await _unitOfWork.SaveChangesAsync();
 
-        return UserToUserProfileResponse(user) as UserProfileResponse;
+        return UserProfileResponse.From(user);
     }
 
     public async Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request)

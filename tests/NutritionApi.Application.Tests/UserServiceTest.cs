@@ -280,16 +280,6 @@ public class UserServiceTest
 
     }
 
-    // --- ExportUserDataAsync ---
-
-    [Fact]
-    public async Task ExportUserDataAsync_Success_ReturnsExportedData()
-        => throw new NotImplementedException();
-
-    [Fact]
-    public async Task ExportUserDataAsync_UserNotFound_ThrowsNotFoundException()
-        => throw new NotImplementedException();
-
     // --- AddWeightEntryAsync ---
 
     [Fact]

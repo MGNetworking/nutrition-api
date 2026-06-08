@@ -1,4 +1,3 @@
-
 namespace NutritionApi.Application.DTOS.FoodItems;
 
 public record SavedFoodItemResponse(
