@@ -61,7 +61,11 @@ public class MealItemTest
     [Fact]
     public void Constructor_Nutrition_Null_ThrowsArgumentNullExceptionTest()
     {
-        Assert.Throws<ArgumentNullException>(() => CreateMealItem(nutrition: null!));
+        Assert.Throws<ArgumentNullException>(() => new MealItem(
+              mealId: Guid.NewGuid(),
+              foodItemId: Guid.NewGuid(),
+              quantity: 150.0f,
+              nutrition: null!));
     }
 
 

@@ -114,11 +114,53 @@ public class UserService : IUserService
     }
 
     public async Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request)
-        => throw new NotImplementedException();
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        // Une seul mesure de poids par jour, on vérifie si une entrée existe déjà pour la date donnée
+        if (request.MeasuredAt is not null)
+        {
+            var existing = await _weightEntryRepository.GetByUserIdAndDateAsync(userId, request.MeasuredAt.Value);
+            if (existing is not null)
+                throw new ConflictException("A weight entry already exists for this date.");
+        }
+
+        var weightEntry = new WeightEntry(
+            userId,
+            request.Weight,
+            request.MeasuredAt ?? DateOnly.FromDateTime(DateTime.UtcNow));
+
+        await _weightEntryRepository.AddAsync(weightEntry);
+        await _unitOfWork.SaveChangesAsync();
+        return WeightEntryResponse.From(weightEntry);
+    }
 
     public async Task<List<WeightEntryResponse>> GetWeightHistoryAsync(Guid userId)
-        => throw new NotImplementedException();
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        var weightEntries = await _weightEntryRepository.GetByUserIdAsync(userId);
+        return weightEntries.Select(WeightEntryResponse.From).ToList();
+    }
 
     public async Task<WeightEntryResponse> UpdateWeightEntryAsync(Guid userId, Guid entryId, UpdateWeightEntryRequest request)
-        => throw new NotImplementedException();
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        var weightEntry = await _weightEntryRepository.GetByIdAsync(entryId);
+        if (weightEntry is null || weightEntry.UserId != userId)
+            throw new NotFoundException("Weight entry not found.");
+
+        weightEntry.Update(request.Weight, request.MeasuredAt);
+
+        await _weightEntryRepository.UpdateAsync(weightEntry);
+        await _unitOfWork.SaveChangesAsync();
+        return WeightEntryResponse.From(weightEntry);
+    }
 }

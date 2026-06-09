@@ -284,38 +284,199 @@ public class UserServiceTest
 
     [Fact]
     public async Task AddWeightEntryAsync_Success_ReturnsWeightEntryResponse()
-        => throw new NotImplementedException();
+    {
+        var (user, _, _) = UserHelper();
+        var weightEntry = new WeightEntry(user.Id, 75f, DateOnly.FromDateTime(DateTime.UtcNow));
+        var request = new AddWeightEntryRequest(weightEntry.Weight, weightEntry.MeasuredAt);
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>()))
+            .ReturnsAsync(user);
+
+        _weightEntryRepositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<WeightEntry>()))
+            .Returns(Task.CompletedTask);
+
+
+        // Act 
+        var result = await  _userService.AddWeightEntryAsync(user.Id, request);
+
+        // Assert
+        var response = Assert.IsType<WeightEntryResponse>(result);
+        Assert.Equal(weightEntry.Weight, response.Weight);
+        Assert.Equal(weightEntry.MeasuredAt, response.MeasuredAt);
+    }
 
     [Fact]
     public async Task AddWeightEntryAsync_DuplicateDate_ThrowsConflictException()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var (user, _, _) = UserHelper();
+        var date = DateOnly.FromDateTime(DateTime.UtcNow);
+        var existingEntry = new WeightEntry(user.Id, 75f, date);
+        var request = new AddWeightEntryRequest(80f, date);
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id))
+            .ReturnsAsync(user);
+
+        _weightEntryRepositoryMock
+            .Setup(r => r.GetByUserIdAndDateAsync(user.Id, date))
+            .ReturnsAsync(existingEntry);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<ConflictException>(() => _userService.AddWeightEntryAsync(user.Id, request));
+
+        _weightEntryRepositoryMock.Verify(r => r.AddAsync(It.IsAny<WeightEntry>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
 
     [Fact]
     public async Task AddWeightEntryAsync_UserNotFound_ThrowsNotFoundException()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var request = new AddWeightEntryRequest(75f);
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(userId))
+            .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.AddWeightEntryAsync(userId, request));
+
+        _weightEntryRepositoryMock.Verify(r => r.AddAsync(It.IsAny<WeightEntry>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
 
     // --- GetWeightHistoryAsync ---
 
     [Fact]
     public async Task GetWeightHistoryAsync_Success_ReturnsWeightEntryList()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var (user, _, _) = UserHelper();
+        var entries = new List<WeightEntry>
+        {
+            new WeightEntry(user.Id, 75f, new DateOnly(2024, 1, 1)),
+            new WeightEntry(user.Id, 76f, new DateOnly(2024, 1, 8)),
+        };
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id))
+            .ReturnsAsync(user);
+
+        _weightEntryRepositoryMock
+            .Setup(r => r.GetByUserIdAsync(user.Id))
+            .ReturnsAsync(entries);
+
+        // Act
+        var result = await _userService.GetWeightHistoryAsync(user.Id);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        Assert.Equal(75f, result[0].Weight);
+        Assert.Equal(76f, result[1].Weight);
+
+        _weightEntryRepositoryMock.Verify(r => r.GetByUserIdAsync(user.Id), Times.Once);
+    }
 
     [Fact]
     public async Task GetWeightHistoryAsync_UserNotFound_ThrowsNotFoundException()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(userId))
+            .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.GetWeightHistoryAsync(userId));
+
+        _weightEntryRepositoryMock.Verify(r => r.GetByUserIdAsync(It.IsAny<Guid>()), Times.Never);
+    }
 
     // --- UpdateWeightEntryAsync ---
 
     [Fact]
     public async Task UpdateWeightEntryAsync_Success_ReturnsWeightEntryResponse()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var (user, _, _) = UserHelper();
+        var entry = new WeightEntry(user.Id, 75f, new DateOnly(2024, 1, 1));
+        var request = new UpdateWeightEntryRequest(80f, new DateOnly(2024, 1, 8));
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id))
+            .ReturnsAsync(user);
+
+        _weightEntryRepositoryMock
+            .Setup(r => r.GetByIdAsync(entry.Id))
+            .ReturnsAsync(entry);
+
+        _weightEntryRepositoryMock
+            .Setup(r => r.UpdateAsync(It.IsAny<WeightEntry>()))
+            .Returns(Task.CompletedTask);
+
+        _unitOfWorkMock
+            .Setup(u => u.SaveChangesAsync())
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _userService.UpdateWeightEntryAsync(user.Id, entry.Id, request);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(request.Weight, result.Weight);
+        Assert.Equal(request.MeasuredAt, result.MeasuredAt);
+
+        _weightEntryRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<WeightEntry>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
 
     [Fact]
     public async Task UpdateWeightEntryAsync_EntryNotFound_ThrowsNotFoundException()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var (user, _, _) = UserHelper();
+        var entryId = Guid.NewGuid();
+        var request = new UpdateWeightEntryRequest(80f, new DateOnly(2024, 1, 8));
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(user.Id))
+            .ReturnsAsync(user);
+
+        _weightEntryRepositoryMock
+            .Setup(r => r.GetByIdAsync(entryId))
+            .ReturnsAsync((WeightEntry?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.UpdateWeightEntryAsync(user.Id, entryId, request));
+
+        _weightEntryRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<WeightEntry>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
 
     [Fact]
     public async Task UpdateWeightEntryAsync_UserNotFound_ThrowsNotFoundException()
-        => throw new NotImplementedException();
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        var request = new UpdateWeightEntryRequest(80f, new DateOnly(2024, 1, 8));
+
+        _userRepositoryMock
+            .Setup(r => r.GetByIdAsync(userId))
+            .ReturnsAsync((User?)null);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<NotFoundException>(() => _userService.UpdateWeightEntryAsync(userId, entryId, request));
+
+        _weightEntryRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>()), Times.Never);
+        _weightEntryRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<WeightEntry>()), Times.Never);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+    }
 
 }

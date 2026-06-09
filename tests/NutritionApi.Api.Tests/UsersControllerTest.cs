@@ -199,7 +199,7 @@ public class UsersControllerTest
             DietPlans: new List<DietPlanResponse>(),
             Diets: new List<DietResponse>(),
             Meals: new List<MealResponse>(),
-            SavedFoodItems: new List<SavedFoodItemResponse>()
+            SavedFoodItems: new List<FoodItemSearchResponse>()
         );
 
         _mockRgpdService
