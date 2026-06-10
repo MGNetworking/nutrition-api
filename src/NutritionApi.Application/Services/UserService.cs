@@ -27,10 +27,8 @@ public class UserService : IUserService
         string keycloakId,
         CreateUserProfileRequest request)
     {
-        var existing = await _userRepository.GetByKeycloakIdAsync(keycloakId);
 
-        if (existing is not null)
-            throw new ConflictException("User profile already exists.");
+        await ThrowIfUserProfileExistsAsync(keycloakId);
 
         var user = new User(
             keycloakId,
@@ -55,11 +53,7 @@ public class UserService : IUserService
 
     public async Task<UserProfileResponse> GetUserProfileAsync(string keycloakId)
     {
-        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
-
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
-
+        var user = await GetUserByKeycloakIdOrThrowAsync(keycloakId);
         return UserProfileResponse.From(user);
     }
 
@@ -67,10 +61,7 @@ public class UserService : IUserService
         string keycloakId,
         UpdateUserProfileRequest request)
     {
-        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
-
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
+        var user = await GetUserByKeycloakIdOrThrowAsync(keycloakId);
 
         user.ChangeBirthDate(request.BirthDate);
         user.ChangeGender(request.Gender);
@@ -87,10 +78,7 @@ public class UserService : IUserService
 
     public async Task DeleteUserAsync(string keycloakId)
     {
-        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
-
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
+        var user = await GetUserByKeycloakIdOrThrowAsync(keycloakId);
 
         user.MarkAsDeleted(); // c'est un soft delete
 
@@ -100,10 +88,7 @@ public class UserService : IUserService
 
     public async Task<UserProfileResponse> ReactivateUserAsync(string keycloakId)
     {
-        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId);
-
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
+        var user = await GetUserByKeycloakIdOrThrowAsync(keycloakId);
 
         user.Reactivate(); // c'est une reactivation soft 
 
@@ -115,9 +100,7 @@ public class UserService : IUserService
 
     public async Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
+        var user = await GetUserIdOrThrowAsync(userId);
 
         // Une seul mesure de poids par jour, on vérifie si une entrée existe déjà pour la date donnée
         if (request.MeasuredAt is not null)
@@ -139,9 +122,7 @@ public class UserService : IUserService
 
     public async Task<List<WeightEntryResponse>> GetWeightHistoryAsync(Guid userId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
+        var user = await GetUserIdOrThrowAsync(userId);
 
         var weightEntries = await _weightEntryRepository.GetByUserIdAsync(userId);
         return weightEntries.Select(WeightEntryResponse.From).ToList();
@@ -149,11 +130,9 @@ public class UserService : IUserService
 
     public async Task<WeightEntryResponse> UpdateWeightEntryAsync(Guid userId, Guid entryId, UpdateWeightEntryRequest request)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user is null)
-            throw new NotFoundException("User profile not found.");
-
+        var user = await GetUserIdOrThrowAsync(userId);
         var weightEntry = await _weightEntryRepository.GetByIdAsync(entryId);
+
         if (weightEntry is null || weightEntry.UserId != userId)
             throw new NotFoundException("Weight entry not found.");
 
@@ -162,5 +141,47 @@ public class UserService : IUserService
         await _weightEntryRepository.UpdateAsync(weightEntry);
         await _unitOfWork.SaveChangesAsync();
         return WeightEntryResponse.From(weightEntry);
+    }
+
+    /// <summary>
+    /// Throw si l'utilisateur EXISTE déjà (création)
+    /// </summary>
+    /// <param name="KcId"></param>
+    /// <returns></returns>
+    /// <exception cref="ConflictException"></exception>
+    private async Task ThrowIfUserProfileExistsAsync(string KcId)
+    {
+        var userExisting = await _userRepository.GetByKeycloakIdAsync(KcId);
+
+        if (userExisting is not null)
+            throw new ConflictException("User profile already exists.");
+
+    }
+
+    /// <summary>
+    /// Retourne l'utilisateur ou throw s'il n'existe PAS (lecture/update)
+    /// </summary>
+    /// <param name="KcId"></param>
+    /// <returns></returns>
+    /// <exception cref="NotFoundException"></exception>
+    private async Task<User> GetUserByKeycloakIdOrThrowAsync(string KcId)
+    {
+        var userExisting = await _userRepository.GetByKeycloakIdAsync(KcId);
+
+        if (userExisting is null)
+            throw new NotFoundException("User profile not found.");
+
+        return userExisting;
+
+    }
+
+    private async Task<User> GetUserIdOrThrowAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user is null)
+            throw new NotFoundException("User profile not found.");
+
+        return user;
+
     }
 }

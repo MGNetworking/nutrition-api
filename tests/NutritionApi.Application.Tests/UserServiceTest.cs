@@ -5,6 +5,7 @@ using NutritionApi.Application.DTOS.Users;
 using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
+using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
@@ -299,7 +300,7 @@ public class UserServiceTest
 
 
         // Act 
-        var result = await  _userService.AddWeightEntryAsync(user.Id, request);
+        var result = await _userService.AddWeightEntryAsync(user.Id, request);
 
         // Assert
         var response = Assert.IsType<WeightEntryResponse>(result);

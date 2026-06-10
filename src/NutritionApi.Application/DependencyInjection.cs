@@ -9,6 +9,7 @@ public static class ApplicationExtensions
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IRgpdService, RgpdService>();
         return services;
     }
 }
