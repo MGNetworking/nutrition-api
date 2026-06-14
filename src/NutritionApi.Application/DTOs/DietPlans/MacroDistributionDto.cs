@@ -1,8 +1,8 @@
-
-using NutritionApi.Domain.ValueObjects;
 namespace NutritionApi.Application.DTOS.DietPlans;
 
-public record MacroDistributionDto(float ProteinPct, float CarbPct, float FatPct)
+using NutritionApi.Domain.ValueObjects;
+
+public record MacroDistributionDto(int ProteinPct, int CarbPct, int FatPct)
 {
     public static MacroDistributionDto From(MacroDistribution macro)
             => new(macro.ProteinPercentage, macro.CarbPercentage, macro.FatPercentage);

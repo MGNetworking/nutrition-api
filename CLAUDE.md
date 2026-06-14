@@ -76,6 +76,7 @@ Racine de la documentation : `../docs/pages/backend/`
 | `design/design-infrastructure.md` | Couche Infrastructure — EF Core, Redis, Hangfire |
 | `design/design-api.md` | Couche API — controllers, routing, auth JWT, **table des routes** |
 | `design/Regles-metier.md` | Formules BMR/TDEE + invariants domaine |
+| `design/regles-metier-consolidees.md` | **Toutes les règles métier par entité** — référence unique (évite de naviguer entre les 4 fichiers de design) |
 
 ### Backlog et implémentation
 
@@ -93,6 +94,13 @@ Racine de la documentation : `../docs/pages/backend/`
 | `annexes/infrastructure-hangfire.md` | Jobs Hangfire |
 | `annexes/infrastructure-import-off.md` | Import Open Food Facts quotidien |
 | `annexes/infrastructure-keycloak-admin.md` | Keycloak admin |
+| `annexes/concept-moteur-architecture.md` | Concept architectural "Moteur (Engine)" — définition, patterns Strategy + Factory, exemple `NutritionCalculator` |
+
+### Features
+
+| Fichier | Contenu |
+|---|---|
+| `features/nutrition-calculator.md` | Contrat du Moteur de calcul nutritionnel — méthodes, formules BMR, `MacroGrams`, `GetDefaultMacros` |
 
 
 ---
@@ -197,7 +205,24 @@ Instance : `maxime-ghalem.atlassian.net`
 
 **Branche active :** `feature/NTR-2-application-layer`
 **Epic en cours :** NTR-2 — Application Layer
-**Prochaine tâche :** NTR-37 — implémenter les 3 méthodes WeightEntry dans `UserService`
+**Prochaine tâche :** NTR-38 et NTR-39 — sous-tâches de NTR-9 (DietPlansService)
+
+Tickets terminés récemment :
+- NTR-37 ✅ — WeightEntry dans UserService
+- NTR-8 ✅ — RgpdController + RgpdService découplé de UserService
+
+Travail réalisé (NTR-9) :
+- `DietPlansService` — 6 méthodes implémentées (`CreateAsync`, `GetUserPlansAsync`, `GetTemplatesAsync`, `UpdateAsync`, `DeleteAsync`, `LaunchAsync`)
+- `SubscriptionGuard` créée et testée
+- `DietPlansServiceTest` corrigé et tous les tests implémentés
+- **Moteur de calcul nutritionnel** créé dans `Application/Services/Nutrition/` :
+  - `BmrFormula` (enum Domain), `MacroGrams` (value object Domain)
+  - `IBmrStrategy`, `MifflinStJeorStrategy`, `HarrisBenedictStrategy`
+  - `NutritionCalculator`, `NutritionCalculatorFactory`
+  - Tests dans `tests/NutritionApi.Application.Tests/Nutrition/`
+- `regles-metier-consolidees.md` créé
+- `features/nutrition-calculator.md` créé
+- `annexes/concept-moteur-architecture.md` créé
 
 Ordre des Epics :
 ```

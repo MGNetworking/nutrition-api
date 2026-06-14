@@ -40,7 +40,7 @@ public class DietsControllerTest
         Goal: Goal.WeightLoss,
         TargetWeight: 75f,
         CalorieTarget: 2000f,
-        MacroDistribution: new MacroDistributionDto(40f, 30f, 30f),
+        MacroDistribution: new MacroDistributionDto(40, 30, 30),
         Status: DietStatus.Active,
         StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
         EndDate: null
