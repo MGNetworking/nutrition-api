@@ -153,6 +153,7 @@ SDD.md
 GIT-WORKFLOW.md
 ASYNC-CSHARP.md
 cache-orm-levels.md
+tests/XUNIT-GUIDE.md
 
 # ============================================================
 # Secrets & configuration locale
