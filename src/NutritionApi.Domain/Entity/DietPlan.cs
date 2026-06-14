@@ -40,7 +40,12 @@ public class DietPlan
         Rename(name);
         ChangeDietType(dietType);
         ChangeGoal(goal);
-        SetTargetWeight(targetWeight);
+
+        if (targetWeight > 0f)
+            SetTargetWeight(targetWeight);
+        else 
+            this.TargetWeight = targetWeight;
+
         AdjustMacros(macroDistribution);
     }
 

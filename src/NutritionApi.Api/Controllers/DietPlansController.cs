@@ -4,7 +4,6 @@ using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Interfaces.Services;
-using System.Security.Claims;
 
 namespace NutritionApi.Api.Controllers;
 
