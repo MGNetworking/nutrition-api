@@ -5,6 +5,12 @@
 
 ---
 
+## Harness multi-agent
+
+Ce projet utilise un Harness universel. Point d'entrée : `.ai/HARNESS.md`
+
+---
+
 ## Règles de collaboration — à lire en premier
 
 Ces règles s'appliquent sans exception à toutes les sessions.
@@ -203,29 +209,4 @@ Instance : `maxime-ghalem.atlassian.net`
 
 ## État courant du projet
 
-**Branche active :** `feature/NTR-2-application-layer`
-**Epic en cours :** NTR-2 — Application Layer
-**Prochaine tâche :** NTR-38 et NTR-39 — sous-tâches de NTR-9 (DietPlansService)
-
-Tickets terminés récemment :
-- NTR-37 ✅ — WeightEntry dans UserService
-- NTR-8 ✅ — RgpdController + RgpdService découplé de UserService
-
-Travail réalisé (NTR-9) :
-- `DietPlansService` — 6 méthodes implémentées (`CreateAsync`, `GetUserPlansAsync`, `GetTemplatesAsync`, `UpdateAsync`, `DeleteAsync`, `LaunchAsync`)
-- `SubscriptionGuard` créée et testée
-- `DietPlansServiceTest` corrigé et tous les tests implémentés
-- **Moteur de calcul nutritionnel** créé dans `Application/Services/Nutrition/` :
-  - `BmrFormula` (enum Domain), `MacroGrams` (value object Domain)
-  - `IBmrStrategy`, `MifflinStJeorStrategy`, `HarrisBenedictStrategy`
-  - `NutritionCalculator`, `NutritionCalculatorFactory`
-  - Tests dans `tests/NutritionApi.Application.Tests/Nutrition/`
-- `regles-metier-consolidees.md` créé
-- `features/nutrition-calculator.md` créé
-- `annexes/concept-moteur-architecture.md` créé
-
-Ordre des Epics :
-```
-NTR-79 ✅ → NTR-4 API Layer ✅ → NTR-2 Application (en cours) → NTR-3 Infrastructure
-```
-
+→ Voir `.ai/HARNESS.md` — section "État courant du projet"

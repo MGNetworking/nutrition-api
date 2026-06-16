@@ -57,6 +57,8 @@ docker run -p 8080:8080 -p 8081:8081 nutrition-api
 
 ## Tests
 
+> Configuration xUnit, Moq et Testcontainers : voir [tests/XUNIT-GUIDE.md](tests/XUNIT-GUIDE.md)
+
 ### Lancer les tests
 
 ```bash
