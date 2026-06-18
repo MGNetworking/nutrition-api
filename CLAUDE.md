@@ -5,12 +5,6 @@
 
 ---
 
-## Harness multi-agent
-
-Ce projet utilise un Harness universel. Point d'entrée : `.ai/HARNESS.md`
-
----
-
 ## Règles de collaboration — à lire en premier
 
 Ces règles s'appliquent sans exception à toutes les sessions.
