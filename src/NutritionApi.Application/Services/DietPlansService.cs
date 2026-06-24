@@ -1,36 +1,37 @@
 using NutritionApi.Application.DTOS.DietPlans;
-using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
-using NutritionApi.Application.Services.Nutrition;
 using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Application.Services;
 
+/// <summary>
+/// Implémentation de <see cref="IDietPlanService"/>.
+/// Gère le CRUD des DietPlans personnels et la consultation des templates partagés.
+/// </summary>
 public class DietPlansService : IDietPlanService
 {
     private readonly IDietPlanRepository _dietPlanRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IDietRepository _dietRepository;
-    private readonly IWeightEntryRepository _weightEntryRepository;
     private readonly SubscriptionGuard _subscriptionGuard;
 
     public DietPlansService(
         IDietPlanRepository dietPlanRepository,
         IUserRepository userRepository,
-        IDietRepository dietRepository,
-        IWeightEntryRepository weightEntryRepository,
         SubscriptionGuard subscriptionGuard)
     {
         _dietPlanRepository = dietPlanRepository;
         _userRepository = userRepository;
-        _dietRepository = dietRepository;
-        _weightEntryRepository = weightEntryRepository;
         _subscriptionGuard = subscriptionGuard;
     }
 
+    /// <summary>
+    /// Crée un DietPlan personnel pour l'utilisateur.
+    /// Contrôle la limite du nombre de plans autorisés selon le tier via SubscriptionGuard.
+    /// </summary>
+    /// <exception cref="NotFoundException">L'utilisateur n'existe pas.</exception>
     public async Task<DietPlanResponse> CreateAsync(Guid userId, CreateDietPlanRequest request)
     {
         var userCurrentCount = await _dietPlanRepository.CountByUserIdAsync(userId);
@@ -58,12 +59,20 @@ public class DietPlansService : IDietPlanService
         return DietPlanResponse.From(planDiet);
     }
 
+    /// <summary>
+    /// Retourne tous les DietPlans personnels de l'utilisateur.
+    /// </summary>
     public async Task<List<DietPlanResponse>> GetUserPlansAsync(Guid userId)
     {
         var plans = await _dietPlanRepository.GetByUserIdAsync(userId);
         return plans.Select(DietPlanResponse.From).ToList();
     }
 
+    /// <summary>
+    /// Retourne les DietPlans templates partagés accessibles à l'utilisateur.
+    /// Vérifie l'accès aux templates selon le tier via SubscriptionGuard.
+    /// </summary>
+    /// <exception cref="NotFoundException">L'utilisateur n'existe pas.</exception>
     public async Task<List<DietPlanResponse>> GetTemplatesAsync(Guid userId)
     {
         var user = await _userRepository.GetByIdAsync(userId);
@@ -76,6 +85,11 @@ public class DietPlansService : IDietPlanService
         return templates.Select(DietPlanResponse.From).ToList();
     }
 
+    /// <summary>
+    /// Met à jour les données d'un DietPlan appartenant à l'utilisateur.
+    /// </summary>
+    /// <exception cref="NotFoundException">Le DietPlan n'existe pas.</exception>
+    /// <exception cref="ForbiddenException">Le DietPlan n'appartient pas à l'utilisateur.</exception>
     public async Task<DietPlanResponse> UpdateAsync(Guid userId, Guid planId, UpdateDietPlanRequest request)
     {
         var plan = await _dietPlanRepository.GetByIdAsync(planId);
@@ -101,6 +115,11 @@ public class DietPlansService : IDietPlanService
         return DietPlanResponse.From(plan);
     }
 
+    /// <summary>
+    /// Supprime un DietPlan appartenant à l'utilisateur.
+    /// </summary>
+    /// <exception cref="NotFoundException">Le DietPlan n'existe pas.</exception>
+    /// <exception cref="ForbiddenException">Le DietPlan n'appartient pas à l'utilisateur.</exception>
     public async Task DeleteAsync(Guid userId, Guid planId)
     {
         var plan = await _dietPlanRepository.GetByIdAsync(planId);
@@ -111,46 +130,5 @@ public class DietPlansService : IDietPlanService
             throw new ForbiddenException("You do not have access to this DietPlan.");
 
         await _dietPlanRepository.DeleteAsync(planId);
-    }
-
-    public async Task<DietResponse> LaunchAsync(Guid userId, Guid planId)
-    {
-        var plan = await _dietPlanRepository.GetByIdAsync(planId);
-        if (plan is null)
-            throw new NotFoundException("DietPlan not found.");
-
-        if (!plan.IsTemplate && plan.UserId != userId)
-            throw new ForbiddenException("You do not have access to this DietPlan.");
-
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user is null)
-            throw new NotFoundException("User not found.");
-
-        if (plan.IsTemplate)
-            _subscriptionGuard.CheckTemplateAccess(user.SubscriptionTier);
-
-        var activeDiet = await _dietRepository.GetActiveByUserIdAsync(userId);
-        if (activeDiet is not null)
-            throw new ConflictException("A diet is already active. End it before launching a new one.");
-
-        var entries = await _weightEntryRepository.GetByUserIdAsync(userId);
-        var latestEntry = entries.OrderByDescending(e => e.MeasuredAt).FirstOrDefault();
-        if (latestEntry is null)
-            throw new UnprocessableException("No weight entry found. A weight entry is required to launch a diet.");
-
-        var calculator = NutritionCalculatorFactory.Create();
-        var needs = calculator.Calculate(user, latestEntry.Weight, plan.Goal, plan.MacroDistribution);
-
-        var diet = new Diet(
-            userId,
-            plan.Name,
-            plan.DietType,
-            plan.Goal,
-            plan.TargetWeight,
-            (int)Math.Round(needs.TargetCalories),
-            plan.MacroDistribution);
-
-        await _dietRepository.AddAsync(diet);
-        return DietResponse.From(diet);
     }
 }

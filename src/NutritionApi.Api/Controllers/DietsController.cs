@@ -19,6 +19,20 @@ public class DietsController : ControllerBase
         _dietService = dietService;
     }
 
+    /// <summary>Lancer un plan → crée une Diet active.</summary>
+    [HttpPost("{id:guid}/launch")]
+    [ProducesResponseType(typeof(DietResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> Launch([FromRoute] Guid id)
+    {
+        var userId = UserContextExtensions.GetUserId(HttpContext);
+        var result = await _dietService.LaunchAsync(userId, id);
+
+        return Created(string.Empty, result);
+    }
+
     /// <summary>Récupérer le régime actif de l'utilisateur.</summary>
     [HttpGet("active")]
     [ProducesResponseType(typeof(DietResponse), StatusCodes.Status200OK)]

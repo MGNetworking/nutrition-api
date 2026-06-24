@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.DietPlans;
-using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Interfaces.Services;
 
 namespace NutritionApi.Api.Controllers;
@@ -68,20 +67,6 @@ public class DietPlansController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>Lancer un plan → crée une Diet active.</summary>
-    [HttpPost("{id:guid}/launch")]
-    [ProducesResponseType(typeof(DietResponse), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> Launch([FromRoute] Guid id)
-    {
-        var userId = UserContextExtensions.GetUserId(HttpContext);
-        var result = await _dietPlanService.LaunchAsync(userId, id);
-
-        return Created(string.Empty, result);
-
-    }
     /// <summary>Lister les templates partagés (Pro/Business).</summary>
     [HttpGet("templates")]
     [ProducesResponseType(typeof(List<DietPlanResponse>), StatusCodes.Status200OK)]
