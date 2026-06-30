@@ -1,7 +1,6 @@
 namespace NutritionApi.Application.Interfaces.Services;
 
 using NutritionApi.Application.DTOS.Diets;
-using NutritionApi.Application.DTOS.Nutrition;
 
 /// <summary>
 /// Contrat applicatif pour le cycle de vie des Diets.
@@ -33,9 +32,4 @@ public interface IDietService
     /// Archive la Diet active de l'utilisateur.
     /// </summary>
     Task<DietResponse> ArchiveAsync(Guid userId, Guid dietId);
-
-    /// <summary>
-    /// Retourne le bilan nutritionnel d'une Diet sur une période donnée.
-    /// </summary>
-    Task<NutritionBilanResponse> GetBilanAsync(Guid userId, Guid dietId, string period, DateOnly? date, DateOnly? startDate, DateOnly? endDate);
 }

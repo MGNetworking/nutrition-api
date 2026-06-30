@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.Diets;
-using NutritionApi.Application.DTOS.Nutrition;
 using NutritionApi.Application.Interfaces.Services;
 
 namespace NutritionApi.Api.Controllers;
@@ -81,21 +80,4 @@ public class DietsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Bilan nutritionnel d'un régime.</summary>
-    [HttpGet("{id:guid}/bilan")]
-    [ProducesResponseType(typeof(NutritionBilanResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetBilan(
-        [FromRoute] Guid id,
-        [FromQuery] string period,
-        [FromQuery] DateOnly? date,
-        [FromQuery] DateOnly? startDate,
-        [FromQuery] DateOnly? endDate)
-    {
-        var userId = UserContextExtensions.GetUserId(HttpContext);
-        var result = await _dietService.GetBilanAsync(userId, id, period, date, startDate, endDate);
-
-        return Ok(result);
-    }
 }

@@ -2,6 +2,7 @@ namespace NutritionApi.Application.Tests;
 
 using Moq;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
@@ -17,6 +18,7 @@ public class RgpdServiceTest
     private readonly Mock<IMealRepository> _mealRepositoryMock = new();
     private readonly Mock<ISavedFoodItemRepository> _savedFoodItemRepositoryMock = new();
     private readonly Mock<IFoodItemRepository> _foodItemRepositoryMock = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
     private readonly RgpdService _rgpdService;
 
     public RgpdServiceTest()
@@ -28,7 +30,65 @@ public class RgpdServiceTest
             _dietRepositoryMock.Object,
             _mealRepositoryMock.Object,
             _savedFoodItemRepositoryMock.Object,
-            _foodItemRepositoryMock.Object);
+            _foodItemRepositoryMock.Object,
+            _unitOfWorkMock.Object);
+    }
+
+    // --- DeleteUserAsync ---
+
+    [Fact]
+    public async Task DeleteUserAsync_ShouldMarkAsDeleted_WhenUserExists()
+    {
+        var keycloakId = "keycloak-123";
+        var user = new User(keycloakId, new DateOnly(1990, 1, 1), Gender.Male, ActivityLevel.LightlyActive, 180f, [], []);
+
+        _userRepositoryMock.Setup(r => r.GetByKeycloakIdAsync(keycloakId)).ReturnsAsync(user);
+        _userRepositoryMock.Setup(r => r.UpdateAsync(user)).Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+        await _rgpdService.DeleteUserAsync(keycloakId);
+
+        _userRepositoryMock.Verify(r => r.UpdateAsync(user), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteUserAsync_ShouldThrowNotFoundException_WhenUserNotFound()
+    {
+        _userRepositoryMock.Setup(r => r.GetByKeycloakIdAsync("keycloak-123")).ReturnsAsync((User?)null);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _rgpdService.DeleteUserAsync("keycloak-123"));
+    }
+
+    // --- ReactivateUserAsync ---
+
+    [Fact]
+    public async Task ReactivateUserAsync_ShouldReturnUserProfile_WhenUserExists()
+    {
+        var keycloakId = "keycloak-123";
+        var user = new User(keycloakId, new DateOnly(1990, 1, 1), Gender.Male, ActivityLevel.LightlyActive, 180f, [], []);
+        user.MarkAsDeleted();
+
+        _userRepositoryMock.Setup(r => r.GetByKeycloakIdAsync(keycloakId)).ReturnsAsync(user);
+        _userRepositoryMock.Setup(r => r.UpdateAsync(user)).Returns(Task.CompletedTask);
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
+
+        var result = await _rgpdService.ReactivateUserAsync(keycloakId);
+
+        Assert.NotNull(result);
+        Assert.Equal(user.Id, result.Id);
+        _userRepositoryMock.Verify(r => r.UpdateAsync(user), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task ReactivateUserAsync_ShouldThrowNotFoundException_WhenUserNotFound()
+    {
+        _userRepositoryMock.Setup(r => r.GetByKeycloakIdAsync("keycloak-123")).ReturnsAsync((User?)null);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            _rgpdService.ReactivateUserAsync("keycloak-123"));
     }
 
     // --- ExportUserDataAsync ---

@@ -7,9 +7,6 @@ using NutritionApi.Api.Controllers;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.Users;
 using NutritionApi.Application.DTOS.FoodItems;
-using NutritionApi.Application.DTOS.DietPlans;
-using NutritionApi.Application.DTOS.Diets;
-using NutritionApi.Application.DTOS.Meals;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Domain.Enums;
 using System.Security.Claims;
@@ -18,15 +15,13 @@ public class UsersControllerTest
 {
     private readonly Mock<IUserService> _mockUserService = new();
     private readonly Mock<IFoodItemService> _mockFoodItemService = new();
-    private readonly Mock<IRgpdService> _mockRgpdService = new();
     private readonly UsersController _usersController;
 
     public UsersControllerTest()
     {
         _usersController = new UsersController(
             _mockUserService.Object,
-            _mockFoodItemService.Object,
-            _mockRgpdService.Object);
+            _mockFoodItemService.Object);
     }
 
     private string SetControllerContextClaim(string kcUserId = null!, Guid? userId = null)
@@ -142,79 +137,6 @@ public class UsersControllerTest
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(userProfileResponse, ok.Value);
         _mockUserService.Verify(s => s.UpdateUserProfileAsync(userKcId, updateUserProfileRequest), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteProfile_WhenUserDeleted_ReturnsNoContent()
-    {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim();
-
-        _mockUserService
-            .Setup(s => s.DeleteUserAsync(userKcId))
-            .Returns(Task.CompletedTask);
-
-        // Act
-        var result = await _usersController.DeleteProfile();
-
-        // Assert
-        Assert.IsType<NoContentResult>(result);
-        _mockUserService.Verify(s => s.DeleteUserAsync(userKcId), Times.Once);
-    }
-
-    // -------------------------------------------------------------------------
-    // RGPD
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public async Task ReactivateUser_WhenInGracePeriod_ReturnsOk()
-    {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim();
-        var (_, userProfileResponse, _) = this.BuildUserProfileData();
-
-        _mockUserService
-            .Setup(s => s.ReactivateUserAsync(userKcId))
-            .ReturnsAsync(userProfileResponse);
-
-        // Act
-        var result = await _usersController.ReactivateUser();
-
-        // Assert
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(userProfileResponse, ok.Value);
-        _mockUserService.Verify(s => s.ReactivateUserAsync(userKcId), Times.Once);
-    }
-
-    [Fact]
-    public async Task ExportData_WhenUserExists_ReturnsOk()
-    {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim();
-        var (_, userProfileResponse, _) = this.BuildUserProfileData();
-
-        var exportData = new UserExportResponse(
-            Profile: userProfileResponse,
-            WeightHistory: new List<WeightEntryResponse>(),
-            DietPlans: new List<DietPlanResponse>(),
-            Diets: new List<DietResponse>(),
-            Meals: new List<MealResponse>(),
-            SavedFoodItems: new List<FoodItemSearchResponse>()
-        );
-
-        _mockRgpdService
-            .Setup(s => s.ExportUserDataAsync(userKcId))
-            .ReturnsAsync(exportData);
-
-        // Act
-        var result = await _usersController.ExportData();
-
-        // Assert
-        var file = Assert.IsType<FileContentResult>(result);
-        Assert.Equal("application/zip", file.ContentType);
-        Assert.StartsWith("export-", file.FileDownloadName);
-        Assert.EndsWith(".zip", file.FileDownloadName);
-        _mockRgpdService.Verify(s => s.ExportUserDataAsync(userKcId), Times.Once);
     }
 
     // -------------------------------------------------------------------------

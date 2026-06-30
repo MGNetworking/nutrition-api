@@ -39,35 +39,62 @@ public class RgpdControllerTest
     }
 
 
-    // --- RgpdExportUserDataAsync ---
+    private static UserProfileResponse BuildUserProfileResponse() => new(
+        Id: Guid.NewGuid(),
+        BirthDate: new DateOnly(1990, 1, 1),
+        Gender: Gender.Male,
+        ActivityLevel: ActivityLevel.LightlyActive,
+        Height: 180f,
+        Allergies: [],
+        DietaryPreferences: [],
+        SubscriptionTier: SubscriptionTier.Free,
+        CreatedAt: DateTime.UtcNow);
+
+    // --- DeleteUserAsync ---
 
     [Fact]
-    public async Task RgpdExportUserDataAsync_Success_ReturnsUserExportResponse()
+    public async Task Delete_ShouldReturnNoContent_WhenUserExists()
     {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim("keycloak-123");
+        var userKcId = SetControllerContextClaim("keycloak-123");
 
-        var user = new User(
-                keycloakId: userKcId,
-                birthDate: new DateOnly(1990, 1, 1),
-                gender: Gender.Male,
-                activityLevel: ActivityLevel.LightlyActive,
-                height: 180f,
-                allergies: new List<Allergen>(),
-                dietaryPreferences: new List<string>()
-            );
+        _rgpdService
+            .Setup(s => s.DeleteUserAsync(userKcId))
+            .Returns(Task.CompletedTask);
 
-        var userExportResponse = new UserExportResponse(
-            Profile: new UserProfileResponse(
-                Id: user.Id,
-                BirthDate: user.BirthDate,
-                Gender: user.Gender,
-                ActivityLevel: user.ActivityLevel,
-                Height: user.Height,
-                Allergies: user.Allergies,
-                DietaryPreferences: user.DietaryPreferences,
-                SubscriptionTier: user.SubscriptionTier,
-                CreatedAt: user.CreatedAt),
+        var result = await _rgpdController.Delete();
+
+        Assert.IsType<NoContentResult>(result);
+        _rgpdService.Verify(s => s.DeleteUserAsync(userKcId), Times.Once);
+    }
+
+    // --- ReactivateUserAsync ---
+
+    [Fact]
+    public async Task Reactivate_ShouldReturnOk_WhenUserIsInGracePeriod()
+    {
+        var userKcId = SetControllerContextClaim("keycloak-123");
+        var expected = BuildUserProfileResponse();
+
+        _rgpdService
+            .Setup(s => s.ReactivateUserAsync(userKcId))
+            .ReturnsAsync(expected);
+
+        var result = await _rgpdController.Reactivate();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(expected, ok.Value);
+        _rgpdService.Verify(s => s.ReactivateUserAsync(userKcId), Times.Once);
+    }
+
+    // --- GetUserRgpdExportData ---
+
+    [Fact]
+    public async Task GetUserRgpdExportData_ShouldReturnZipFile_WhenUserExists()
+    {
+        var userKcId = SetControllerContextClaim("keycloak-123");
+
+        var exportResponse = new UserExportResponse(
+            Profile: BuildUserProfileResponse(),
             WeightHistory: [],
             DietPlans: [],
             Diets: [],
@@ -76,19 +103,14 @@ public class RgpdControllerTest
 
         _rgpdService
             .Setup(s => s.ExportUserDataAsync(userKcId))
-            .ReturnsAsync(userExportResponse);
+            .ReturnsAsync(exportResponse);
 
-        // Act
-        var DataExport = await _rgpdController
-            .GetUserRgpdExportData();
+        var result = await _rgpdController.GetUserRgpdExportData();
 
-        // Assert
-        Assert.IsType<UserExportResponse>(DataExport);
-        Assert.Equal(userExportResponse, DataExport);
-
-        _rgpdService.Verify(s => s.ExportUserDataAsync(userKcId), Times.Once());
-
-
-
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/zip", file.ContentType);
+        Assert.StartsWith("export-", file.FileDownloadName);
+        Assert.EndsWith(".zip", file.FileDownloadName);
+        _rgpdService.Verify(s => s.ExportUserDataAsync(userKcId), Times.Once);
     }
 }

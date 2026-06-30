@@ -2,6 +2,7 @@ namespace NutritionApi.Application.Services;
 
 using NutritionApi.Application.DTOS.Users;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Application.DTOS.Diets;
@@ -18,6 +19,7 @@ public class RgpdService : IRgpdService
     private readonly IMealRepository _mealRepository;
     private readonly ISavedFoodItemRepository _savedFoodItemRepository;
     private readonly IFoodItemRepository _foodItemRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
     public RgpdService(
         IUserRepository userRepository,
@@ -26,7 +28,8 @@ public class RgpdService : IRgpdService
         IDietRepository dietRepository,
         IMealRepository mealRepository,
         ISavedFoodItemRepository savedFoodItemRepository,
-        IFoodItemRepository foodItemRepository)
+        IFoodItemRepository foodItemRepository,
+        IUnitOfWork unitOfWork)
     {
         _userRepository = userRepository;
         _weightEntryRepository = weightEntryRepository;
@@ -35,6 +38,31 @@ public class RgpdService : IRgpdService
         _mealRepository = mealRepository;
         _savedFoodItemRepository = savedFoodItemRepository;
         _foodItemRepository = foodItemRepository;
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task DeleteUserAsync(string keycloakId)
+    {
+        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId)
+            ?? throw new NotFoundException("User profile not found.");
+
+        user.MarkAsDeleted();
+
+        await _userRepository.UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task<UserProfileResponse> ReactivateUserAsync(string keycloakId)
+    {
+        var user = await _userRepository.GetByKeycloakIdAsync(keycloakId)
+            ?? throw new NotFoundException("User profile not found.");
+
+        user.Reactivate();
+
+        await _userRepository.UpdateAsync(user);
+        await _unitOfWork.SaveChangesAsync();
+
+        return UserProfileResponse.From(user);
     }
 
     public async Task<UserExportResponse> ExportUserDataAsync(string keycloakId)

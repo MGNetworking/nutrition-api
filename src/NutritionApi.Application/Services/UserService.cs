@@ -76,33 +76,11 @@ public class UserService : IUserService
         return UserProfileResponse.From(user);
     }
 
-    public async Task DeleteUserAsync(string keycloakId)
-    {
-        var user = await GetUserByKeycloakIdOrThrowAsync(keycloakId);
-
-        user.MarkAsDeleted(); // c'est un soft delete
-
-        await _userRepository.UpdateAsync(user);
-        await _unitOfWork.SaveChangesAsync();
-    }
-
-    public async Task<UserProfileResponse> ReactivateUserAsync(string keycloakId)
-    {
-        var user = await GetUserByKeycloakIdOrThrowAsync(keycloakId);
-
-        user.Reactivate(); // c'est une reactivation soft 
-
-        await _userRepository.UpdateAsync(user);
-        await _unitOfWork.SaveChangesAsync();
-
-        return UserProfileResponse.From(user);
-    }
-
     public async Task<WeightEntryResponse> AddWeightEntryAsync(Guid userId, AddWeightEntryRequest request)
     {
         var user = await GetUserIdOrThrowAsync(userId);
 
-        // Une seul mesure de poids par jour, on vérifie si une entrée existe déjà pour la date donnée
+        // Une seul mesure de poids par jour, on vï¿½rifie si une entrï¿½e existe dï¿½jï¿½ pour la date donnï¿½e
         if (request.MeasuredAt is not null)
         {
             var existing = await _weightEntryRepository.GetByUserIdAndDateAsync(userId, request.MeasuredAt.Value);
@@ -144,7 +122,7 @@ public class UserService : IUserService
     }
 
     /// <summary>
-    /// Throw si l'utilisateur EXISTE déjà (création)
+    /// Throw si l'utilisateur EXISTE dï¿½jï¿½ (crï¿½ation)
     /// </summary>
     /// <param name="KcId"></param>
     /// <returns></returns>
