@@ -105,6 +105,16 @@ Racine de la documentation : `../docs/pages/backend/`
 
 ---
 
+## Rules
+
+Les règles détaillées sont dans `.claude/rules/`. Elles complètent les conventions ci-dessous.
+
+| Fichier | Sujet |
+|---|---|
+| `.claude/rules/xml-documentation.md` | Documentation XML C# — interfaces, services, repositories, entités |
+
+---
+
 ## Conventions de code
 
 ### Workflow API-first — ordre obligatoire
@@ -204,3 +214,22 @@ Instance : `maxime-ghalem.atlassian.net`
 ## État courant du projet
 
 → Voir `.ai/HARNESS.md` — section "État courant du projet"
+
+### Avancement Application Layer (NTR-2) — mis à jour 2026-06-24
+
+| Ticket | Sujet | État |
+|---|---|---|
+| NTR-8 | UserService + RgpdService | ✅ |
+| NTR-36 | Créer/mettre à jour profil utilisateur | ✅ |
+| NTR-37 | Gestion des pesées (WeightEntry) | ✅ |
+| NTR-113 | Méthodes RGPD Domain + Application | ✅ |
+| NTR-114 | Export RGPD — DTO + ZIP controller | ✅ |
+| NTR-9 | DietPlansService | ✅ |
+| NTR-116 | Moteur de calcul nutritionnel | ✅ |
+| NTR-38 | CRUD plans personnels (DietPlan) | ✅ |
+| NTR-39 | Lister les templates partagés | ✅ |
+| NTR-40 | Lancer un DietPlan (LaunchAsync) | ✅ |
+| NTR-10 | Cycle de vie d'un régime (Diet) | 🔲 prochain |
+| NTR-47 | SubscriptionGuard | ✅ |
+| NTR-95 | Contrôle tier DietPlan | ✅ |
+| NTR-96 | Restriction templates selon tier | ✅ |
