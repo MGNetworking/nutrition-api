@@ -27,11 +27,12 @@ public class DietPlansService : IDietPlanService
         _subscriptionGuard = subscriptionGuard;
     }
 
-    /// <summary>
-    /// Crée un DietPlan personnel pour l'utilisateur.
-    /// Contrôle la limite du nombre de plans autorisés selon le tier via SubscriptionGuard.
-    /// </summary>
+    /// <summary>Crée un DietPlan personnel pour l'utilisateur après vérification de la limite de plans selon le tier.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <param name="request">Données du plan à créer.</param>
+    /// <returns>Le plan créé.</returns>
     /// <exception cref="NotFoundException">L'utilisateur n'existe pas.</exception>
+    /// <exception cref="ForbiddenException">La limite de DietPlans autorisés pour ce tier est atteinte.</exception>
     public async Task<DietPlanResponse> CreateAsync(Guid userId, CreateDietPlanRequest request)
     {
         var userCurrentCount = await _dietPlanRepository.CountByUserIdAsync(userId);
@@ -59,20 +60,20 @@ public class DietPlansService : IDietPlanService
         return DietPlanResponse.From(planDiet);
     }
 
-    /// <summary>
-    /// Retourne tous les DietPlans personnels de l'utilisateur.
-    /// </summary>
+    /// <summary>Retourne tous les DietPlans personnels de l'utilisateur.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <returns>Liste des plans personnels de l'utilisateur.</returns>
     public async Task<List<DietPlanResponse>> GetUserPlansAsync(Guid userId)
     {
         var plans = await _dietPlanRepository.GetByUserIdAsync(userId);
         return plans.Select(DietPlanResponse.From).ToList();
     }
 
-    /// <summary>
-    /// Retourne les DietPlans templates partagés accessibles à l'utilisateur.
-    /// Vérifie l'accès aux templates selon le tier via SubscriptionGuard.
-    /// </summary>
+    /// <summary>Retourne les DietPlans templates partagés accessibles à l'utilisateur selon son tier.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <returns>Liste des templates disponibles.</returns>
     /// <exception cref="NotFoundException">L'utilisateur n'existe pas.</exception>
+    /// <exception cref="ForbiddenException">Le tier Free n'a pas accès aux templates.</exception>
     public async Task<List<DietPlanResponse>> GetTemplatesAsync(Guid userId)
     {
         var user = await _userRepository.GetByIdAsync(userId);
@@ -85,9 +86,11 @@ public class DietPlansService : IDietPlanService
         return templates.Select(DietPlanResponse.From).ToList();
     }
 
-    /// <summary>
-    /// Met à jour les données d'un DietPlan appartenant à l'utilisateur.
-    /// </summary>
+    /// <summary>Met à jour les données d'un DietPlan appartenant à l'utilisateur.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <param name="planId">Identifiant du plan à modifier.</param>
+    /// <param name="request">Données mises à jour du plan.</param>
+    /// <returns>Le plan mis à jour.</returns>
     /// <exception cref="NotFoundException">Le DietPlan n'existe pas.</exception>
     /// <exception cref="ForbiddenException">Le DietPlan n'appartient pas à l'utilisateur.</exception>
     public async Task<DietPlanResponse> UpdateAsync(Guid userId, Guid planId, UpdateDietPlanRequest request)
@@ -115,9 +118,9 @@ public class DietPlansService : IDietPlanService
         return DietPlanResponse.From(plan);
     }
 
-    /// <summary>
-    /// Supprime un DietPlan appartenant à l'utilisateur.
-    /// </summary>
+    /// <summary>Supprime un DietPlan appartenant à l'utilisateur.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <param name="planId">Identifiant du plan à supprimer.</param>
     /// <exception cref="NotFoundException">Le DietPlan n'existe pas.</exception>
     /// <exception cref="ForbiddenException">Le DietPlan n'appartient pas à l'utilisateur.</exception>
     public async Task DeleteAsync(Guid userId, Guid planId)

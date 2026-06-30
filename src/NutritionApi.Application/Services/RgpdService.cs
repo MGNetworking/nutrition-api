@@ -41,6 +41,9 @@ public class RgpdService : IRgpdService
         _unitOfWork = unitOfWork;
     }
 
+    /// <summary>Marque le compte utilisateur comme supprimé (soft delete).</summary>
+    /// <param name="keycloakId">Identifiant Keycloak de l'utilisateur.</param>
+    /// <exception cref="NotFoundException">Aucun profil trouvé pour cet identifiant Keycloak.</exception>
     public async Task DeleteUserAsync(string keycloakId)
     {
         var user = await _userRepository.GetByKeycloakIdAsync(keycloakId)
@@ -52,6 +55,10 @@ public class RgpdService : IRgpdService
         await _unitOfWork.SaveChangesAsync();
     }
 
+    /// <summary>Réactive un compte utilisateur marqué comme supprimé.</summary>
+    /// <param name="keycloakId">Identifiant Keycloak de l'utilisateur.</param>
+    /// <returns>Le profil utilisateur réactivé.</returns>
+    /// <exception cref="NotFoundException">Aucun profil trouvé pour cet identifiant Keycloak.</exception>
     public async Task<UserProfileResponse> ReactivateUserAsync(string keycloakId)
     {
         var user = await _userRepository.GetByKeycloakIdAsync(keycloakId)
@@ -65,6 +72,10 @@ public class RgpdService : IRgpdService
         return UserProfileResponse.From(user);
     }
 
+    /// <summary>Agrège toutes les données personnelles de l'utilisateur pour l'export RGPD.</summary>
+    /// <param name="keycloakId">Identifiant Keycloak de l'utilisateur.</param>
+    /// <returns>L'archive complète des données utilisateur.</returns>
+    /// <exception cref="NotFoundException">Aucun profil trouvé pour cet identifiant Keycloak.</exception>
     public async Task<UserExportResponse> ExportUserDataAsync(string keycloakId)
     {
         var user = await _userRepository.GetByKeycloakIdAsync(keycloakId)

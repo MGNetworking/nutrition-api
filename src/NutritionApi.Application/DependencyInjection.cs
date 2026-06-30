@@ -12,7 +12,6 @@ public static class ApplicationExtensions
         services.AddScoped<IRgpdService, RgpdService>();
         services.AddScoped<IDietPlanService, DietPlansService>();
         services.AddScoped<IDietService, DietService>();
-        services.AddScoped<INutritionService, NutritionService>();
         return services;
     }
 }

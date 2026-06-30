@@ -9,54 +9,52 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Ajout des dépendance dans mon conteneur d'injection
-
+// ── Middlewares ────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ExceptionMiddleware>();
+builder.Services.AddScoped<UserResolutionMiddleware>();
 
+// ── Application layer ──────────────────────────────────────────────────────────
 builder.Services.AddApplication();
-// ASP.NET Core le projet utilise des controllers MVC
-builder.Services.AddControllers(); 
+builder.Services.AddControllers();
 
-// Utilisé automatiquement par UseAuthentication
+// ── Authentification ───────────────────────────────────────────────────────────
+// KeycloakClaimsTransformation convertit realm_access.roles en ClaimTypes.Role standards
 builder.Services.AddSingleton<IClaimsTransformation, KeycloakClaimsTransformation>();
 
-// Active les régles est vérifie l'authenticité du token en utilisant la clé publique de Keycloak
+// Valide le JWT Bearer via la clé publique Keycloak (Authority = issuer du token)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.Authority = builder.Configuration["Keycloak:Authority"];
-        options.Audience = builder.Configuration["Keycloak:Audience"];
+        options.Audience  = builder.Configuration["Keycloak:Audience"];
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,           // Active la vérification de l'émetteur
-            ValidateAudience = true,         // Active la vérification du destinataire
-            ValidateLifetime = true,         // Active la vérification de l'expiration
-            ValidateIssuerSigningKey = true  // Active la vérification de la signature
+            ValidateIssuer           = true,  // Vérifie que le token provient bien de Keycloak
+            ValidateAudience         = true,  // Vérifie que le token est destiné à cette API
+            ValidateLifetime         = true,  // Vérifie que le token n'est pas expiré
+            ValidateIssuerSigningKey = true   // Vérifie la signature avec la clé publique Keycloak
         };
     });
 
-// C'est la règle d'autorisation de end point 
+// ── Autorisation ───────────────────────────────────────────────────────────────
+// AdminOnly : réservé aux endpoints /api/v1/admin — rôle "admin" requis dans Keycloak
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy =>
-        policy.RequireRole("admin"));
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("admin"));
 });
 
+// ── Swagger / OpenAPI ──────────────────────────────────────────────────────────
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Nutrition API",
-        Version = "v1"
-    });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Nutrition API", Version = "v1" });
 
-    // Authentification JWT dans l'UI Swagger
+    // Permet de saisir le token JWT directement dans l'UI Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
+        Type         = SecuritySchemeType.Http,
+        Scheme       = "bearer",
         BearerFormat = "JWT",
-        Description = "Token JWT Keycloak — format : Bearer {token}"
+        Description  = "Token JWT Keycloak — format : Bearer {token}"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -64,26 +62,21 @@ builder.Services.AddSwaggerGen(options =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                    { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 
-    // Commentaires XML pour la documentation des endpoints
+    // Charge les commentaires XML des controllers pour enrichir la doc Swagger
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
-
 });
 
-builder.Services.AddScoped<UserResolutionMiddleware>();
-
-// Construction de l'application
+// ── Build ──────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-
-// Uniquement hors production
+// ── Pipeline HTTP ──────────────────────────────────────────────────────────────
 if (!app.Environment.IsProduction())
 {
     app.UseSwagger();
@@ -91,18 +84,14 @@ if (!app.Environment.IsProduction())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Nutrition API v1"));
 }
 
-
-// pipeline de traitement des requêtes HTTP
-
-app.UseHttpsRedirection();  // inclus dans le Web SDK
+app.UseHttpsRedirection();
 // TODO : configurer AddCors() dans builder.Services
-//app.UseCors();             // Autorise les requêtes cross-origin
+// app.UseCors();
 
-app.UseMiddleware<ExceptionMiddleware>();
-app.UseAuthentication();   // Valide le JWT Bearer
-app.UseAuthorization();    // Vérifie les rôles / policies
-
-app.UseMiddleware<UserResolutionMiddleware>(); // Résout le keycloakId du token vers le User.Id interne
-app.MapControllers();      // Scanner tous tes controllers et d'enregistrer leurs routes dans le routing engine
+app.UseMiddleware<ExceptionMiddleware>();      // Intercepte toutes les exceptions non gérées
+app.UseAuthentication();                      // Valide le JWT Bearer
+app.UseAuthorization();                       // Applique les policies et rôles
+app.UseMiddleware<UserResolutionMiddleware>(); // Résout keycloakId → User.Id interne
+app.MapControllers();
 
 app.Run();
