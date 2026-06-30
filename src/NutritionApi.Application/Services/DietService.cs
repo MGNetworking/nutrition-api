@@ -1,11 +1,10 @@
 using NutritionApi.Application.DTOS.Diets;
-using NutritionApi.Application.DTOS.Nutrition;
 using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Application.Services.Nutrition;
 using NutritionApi.Domain.Entity;
-using NutritionApi.Domain.ValueObjects;
+using NutritionApi.Domain.Enums;
 
 namespace NutritionApi.Application.Services;
 
@@ -35,16 +34,14 @@ public class DietService : IDietService
         _subscriptionGuard = subscriptionGuard;
     }
 
-    /// <summary>
-    /// Lance un DietPlan et crée une Diet active avec snapshot des données nutritionnelles
-    /// gelées à la date du lancement. Calcule BMR/TDEE/CalorieTarget depuis le profil
-    /// utilisateur et la dernière pesée enregistrée.
-    /// Vérifie l'accès aux templates selon le tier si le plan est un template.
-    /// </summary>
+    /// <summary>Lance un DietPlan et crée une Diet active avec snapshot des données nutritionnelles gelées à la date du lancement.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <param name="planId">Identifiant du DietPlan à lancer.</param>
+    /// <returns>La Diet active créée.</returns>
     /// <exception cref="NotFoundException">Le DietPlan ou l'utilisateur n'existe pas.</exception>
     /// <exception cref="ForbiddenException">Le DietPlan n'appartient pas à l'utilisateur.</exception>
     /// <exception cref="ConflictException">Une Diet active existe déjà pour cet utilisateur.</exception>
-    /// <exception cref="UnprocessableException">Aucune pesée enregistrée — requise pour le calcul.</exception>
+    /// <exception cref="UnprocessableException">Aucune pesée enregistrée — requise pour le calcul du CalorieTarget.</exception>
     public async Task<DietResponse> LaunchAsync(Guid userId, Guid planId)
     {
         var plan = await _dietPlanRepository.GetByIdAsync(planId);
@@ -86,35 +83,71 @@ public class DietService : IDietService
         return DietResponse.From(diet);
     }
 
-    /// <summary>
-    /// Retourne la Diet active de l'utilisateur.
-    /// </summary>
+    /// <summary>Retourne la Diet active de l'utilisateur.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <returns>La Diet active correspondante.</returns>
     /// <exception cref="NotFoundException">Aucune Diet active pour cet utilisateur.</exception>
-    public Task<DietResponse> GetActiveAsync(Guid userId) => throw new NotImplementedException();
+    public async Task<DietResponse> GetActiveAsync(Guid userId)
+    {
+        var diet = await _dietRepository.GetActiveByUserIdAsync(userId);
+        if (diet is null)
+            throw new NotFoundException("No active diet found.");
+        return DietResponse.From(diet);
+    }
 
-    /// <summary>
-    /// Retourne l'historique des Diets de l'utilisateur, trié par date de début décroissante.
-    /// </summary>
-    public Task<List<DietResponse>> GetHistoryAsync(Guid userId) => throw new NotImplementedException();
+    /// <summary>Retourne l'historique des Diets de l'utilisateur, trié par date de début décroissante.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <returns>Liste des Diets triée par date de début décroissante.</returns>
+    public async Task<List<DietResponse>> GetHistoryAsync(Guid userId)
+    {
+        var diets = await _dietRepository.GetByUserIdAsync(userId);
+        return diets
+            .OrderByDescending(d => d.StartDate)
+            .Select(DietResponse.From)
+            .ToList();
+    }
 
-    /// <summary>
-    /// Retourne le détail d'une Diet appartenant à l'utilisateur.
-    /// </summary>
+    /// <summary>Retourne le détail d'une Diet appartenant à l'utilisateur.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <param name="dietId">Identifiant de la Diet.</param>
+    /// <returns>La Diet correspondante.</returns>
     /// <exception cref="NotFoundException">La Diet n'existe pas.</exception>
     /// <exception cref="ForbiddenException">La Diet n'appartient pas à l'utilisateur.</exception>
-    public Task<DietResponse> GetByIdAsync(Guid userId, Guid dietId) => throw new NotImplementedException();
+    public async Task<DietResponse> GetByIdAsync(Guid userId, Guid dietId)
+    {
+        var diet = await _dietRepository.GetByIdAsync(dietId);
+        if (diet is null)
+            throw new NotFoundException("Diet not found.");
+        if (diet.UserId != userId)
+            throw new ForbiddenException("You do not have access to this diet.");
+        return DietResponse.From(diet);
+    }
 
-    /// <summary>
-    /// Archive la Diet active de l'utilisateur et retourne la Diet mise à jour.
-    /// </summary>
+    /// <summary>Archive la Diet active de l'utilisateur et retourne la Diet mise à jour.</summary>
+    /// <param name="userId">Identifiant de l'utilisateur.</param>
+    /// <param name="dietId">Identifiant de la Diet à archiver.</param>
+    /// <returns>La Diet archivée.</returns>
     /// <exception cref="NotFoundException">La Diet n'existe pas.</exception>
+    /// <exception cref="ForbiddenException">La Diet n'appartient pas à l'utilisateur.</exception>
     /// <exception cref="UnprocessableException">La Diet n'est pas en statut actif.</exception>
-    public Task<DietResponse> ArchiveAsync(Guid userId, Guid dietId) => throw new NotImplementedException();
+    public async Task<DietResponse> ArchiveAsync(Guid userId, Guid dietId)
+    {
+        var diete = await _dietRepository.GetByIdAsync(dietId);
 
-    /// <summary>
-    /// Retourne le bilan nutritionnel d'une Diet sur une période donnée.
-    /// </summary>
-    /// <exception cref="NotFoundException">La Diet n'existe pas.</exception>
-    /// <exception cref="ForbiddenException">Accès non autorisé selon le tier.</exception>
-    public Task<NutritionBilanResponse> GetBilanAsync(Guid userId, Guid dietId, string period, DateOnly? date, DateOnly? startDate, DateOnly? endDate) => throw new NotImplementedException();
+        if (diete is null)
+            throw new NotFoundException("Diet not found.");
+
+        if (diete.UserId != userId)
+            throw new ForbiddenException("This user cannot activate this diet");
+
+        if (diete.StatusDiet != DietStatus.Active)
+            throw new UnprocessableException("This diet is not active");
+
+        diete.ChangeDietStatus(DietStatus.Archived);
+        await _dietRepository.UpdateAsync(diete);
+
+        return DietResponse.From(diete);
+
+    }
+
 }
