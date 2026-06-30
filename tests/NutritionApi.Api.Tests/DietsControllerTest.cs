@@ -63,6 +63,24 @@ public class DietsControllerTest
     // -------------------------------------------------------------------------
 
     [Fact]
+    public async Task Launch_WhenPlanValid_ReturnsCreated()
+    {
+        var userId = SetControllerContext();
+        var planId = Guid.NewGuid();
+        var expected = BuildDietResponse();
+
+        _mockDietService
+            .Setup(s => s.LaunchAsync(userId, planId))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.Launch(planId);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(expected, created.Value);
+        _mockDietService.Verify(s => s.LaunchAsync(userId, planId), Times.Once);
+    }
+
+    [Fact]
     public async Task GetActive_WhenDietExists_ReturnsOk()
     {
 

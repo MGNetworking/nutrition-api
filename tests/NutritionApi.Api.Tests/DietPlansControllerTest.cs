@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NutritionApi.Api.Controllers;
-using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Interfaces.Services;
-using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using System.Security.Claims;
 
@@ -175,44 +173,6 @@ public class DietPlansControllerTest
 
         // Assert
         _mockDietPlanService.Verify(s => s.DeleteAsync(userId, idDiete), Times.Once);
-    }
-
-    // -------------------------------------------------------------------------
-    // Lancement
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public async Task Launch_WhenPlanValid_ReturnsCreated()
-    {
-        // Arrange
-        var userId = SetControllerContext();
-        var idPlan = Guid.NewGuid();
-        var dietReponse = new DietResponse(
-            Id: Guid.NewGuid(),
-            Name: "Mon r�gime",
-            DietType: DietType.Balanced,
-            Goal: Goal.WeightLoss,
-            TargetWeight: 75f,
-            CalorieTarget: 2000f,
-            MacroDistribution: new MacroDistributionDto(40, 30, 30),
-            Status: DietStatus.Active,
-            StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
-            EndDate: null
-        );
-
-        _mockDietPlanService
-            .Setup(s => s.LaunchAsync(userId, idPlan))
-            .ReturnsAsync(dietReponse);
-
-        // Act
-        var result = await _controller.Launch(idPlan);
-
-        // Assert
-        var ok = Assert.IsType<CreatedResult>(result);
-        Assert.Equal(dietReponse, ok.Value);
-
-        _mockDietPlanService.Verify(s => s.LaunchAsync(userId, idPlan), Times.Once);
-
     }
 
     // -------------------------------------------------------------------------
