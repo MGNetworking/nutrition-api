@@ -229,7 +229,11 @@ Instance : `maxime-ghalem.atlassian.net`
 | NTR-38 | CRUD plans personnels (DietPlan) | ✅ |
 | NTR-39 | Lister les templates partagés | ✅ |
 | NTR-40 | Lancer un DietPlan (LaunchAsync) | ✅ |
-| NTR-10 | Cycle de vie d'un régime (Diet) | 🔲 prochain |
+| NTR-10 | Cycle de vie d'un régime (Diet) | ✅ |
+| NTR-11 | MealService | 🔲 prochain |
+| NTR-12 | FoodItemService | 🔲 |
+| NTR-13 | AdminService | 🔲 |
+| NTR-15 | NutritionService | 🔲 |
 | NTR-47 | SubscriptionGuard | ✅ |
 | NTR-95 | Contrôle tier DietPlan | ✅ |
 | NTR-96 | Restriction templates selon tier | ✅ |
