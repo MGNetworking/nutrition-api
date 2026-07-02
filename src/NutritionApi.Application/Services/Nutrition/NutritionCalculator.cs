@@ -40,6 +40,14 @@ public sealed class NutritionCalculator
         return new NutritionNeeds(bmr, tdee, target, macros);
     }
 
+    public static NutritionInfo CalculateNutrition(FoodItem foodItem, float quantity)
+    => new(
+        foodItem.CaloriesPer100g * quantity / 100f,
+        (int)(foodItem.ProteinsPer100g * quantity / 100f),
+        (int)(foodItem.CarbsPer100g * quantity / 100f),
+        (int)(foodItem.FatsPer100g * quantity / 100f));
+
+
     public static MacroGrams ToGrams(MacroDistribution macros, int calorieTarget)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(calorieTarget);
@@ -58,4 +66,5 @@ public sealed class NutritionCalculator
         DietType.Keto => new MacroDistribution(25, 5, 70),
         _ => throw new ArgumentException($"No default macros defined for this diet type. Received: {dietType}", nameof(dietType))
     };
+
 }

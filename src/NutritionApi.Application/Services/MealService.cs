@@ -2,8 +2,9 @@ using NutritionApi.Application.DTOS.Meals;
 using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
+using NutritionApi.Application.Services.Nutrition;
 using NutritionApi.Domain.Entity;
-using NutritionApi.Domain.ValueObjects;
+
 
 namespace NutritionApi.Application.Services;
 
@@ -49,13 +50,22 @@ public class MealService : IMealService
         }
 
         var mealItems = new List<MealItem>();
-        foreach (var itemRequest in request.Items)
+        var items = request.Items.Select(i => i.FoodItemId ).ToList();
+
+        var foodItems =  await _foodItemRepository.GetByIdsAsync(items);
+
+        if (foodItems is null)
+            throw new NotFoundException("List FoodItem not found.");
+
+        var foodItemsById = foodItems.ToDictionary(f => f.Id);
+
+
+        foreach(var itemRequest in request.Items)
         {
-            var foodItem = await _foodItemRepository.GetByIdAsync(itemRequest.FoodItemId);
-            if (foodItem is null)
+            if (!foodItemsById.TryGetValue(itemRequest.FoodItemId, out var foodItem))
                 throw new NotFoundException("FoodItem not found.");
 
-            var nutrition = CalculateNutrition(foodItem, itemRequest.Quantity);
+            var nutrition = NutritionCalculator.CalculateNutrition(foodItem, itemRequest.Quantity);
             mealItems.Add(new MealItem(Guid.NewGuid(), foodItem.Id, itemRequest.Quantity, nutrition) { FoodItem = foodItem });
         }
 
@@ -162,7 +172,7 @@ public class MealService : IMealService
         if (foodItem is null)
             throw new NotFoundException("FoodItem not found.");
 
-        var nutrition = CalculateNutrition(foodItem, request.Quantity);
+        var nutrition = NutritionCalculator.CalculateNutrition(foodItem, request.Quantity);
         meal.AddMealItem(new MealItem(meal.Id, foodItem.Id, request.Quantity, nutrition) { FoodItem = foodItem });
 
         await _mealRepository.UpdateAsync(meal);
@@ -189,11 +199,4 @@ public class MealService : IMealService
         await _mealRepository.UpdateAsync(meal);
         return MealResponse.From(meal);
     }
-
-    private static NutritionInfo CalculateNutrition(FoodItem foodItem, float quantity)
-        => new(
-            foodItem.CaloriesPer100g * quantity / 100f,
-            (int)(foodItem.ProteinsPer100g * quantity / 100f),
-            (int)(foodItem.CarbsPer100g * quantity / 100f),
-            (int)(foodItem.FatsPer100g * quantity / 100f));
 }

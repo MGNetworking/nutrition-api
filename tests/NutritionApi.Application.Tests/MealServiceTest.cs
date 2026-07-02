@@ -57,7 +57,7 @@ public class MealServiceTest
         var request = new CreateMealRequest("Déjeuner", MealType.Lunch, DateTime.UtcNow, null, false,
             [new MealItemRequest(foodItem.Id, 150f)]);
 
-        _foodItemRepositoryMock.Setup(r => r.GetByIdAsync(foodItem.Id)).ReturnsAsync(foodItem);
+        _foodItemRepositoryMock.Setup(r => r.GetByIdsAsync(It.IsAny<List<Guid>>())).ReturnsAsync([foodItem]);
         _mealRepositoryMock.Setup(r => r.AddAsync(It.IsAny<Meal>())).Returns(Task.CompletedTask);
 
         var result = await _mealService.CreateAsync(userId, request);
@@ -74,7 +74,7 @@ public class MealServiceTest
         var request = new CreateMealRequest("Déjeuner", MealType.Lunch, DateTime.UtcNow, null, false,
             [new MealItemRequest(unknownId, 150f)]);
 
-        _foodItemRepositoryMock.Setup(r => r.GetByIdAsync(unknownId)).ReturnsAsync((FoodItem?)null);
+        _foodItemRepositoryMock.Setup(r => r.GetByIdsAsync(It.IsAny<List<Guid>>())).ReturnsAsync([]);
 
         await Assert.ThrowsAsync<NotFoundException>(() => _mealService.CreateAsync(userId, request));
     }
