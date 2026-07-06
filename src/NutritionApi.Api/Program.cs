@@ -71,6 +71,9 @@ builder.Services.AddSwaggerGen(options =>
     // Charge les commentaires XML des controllers pour enrichir la doc Swagger
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+
+    // Commentaires XML du projet Application (DTOs Request/Response — descriptions des schémas)
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, "NutritionApi.Application.xml"));
 });
 
 // ── Build ──────────────────────────────────────────────────────────────────────
