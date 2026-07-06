@@ -2,6 +2,7 @@ namespace NutritionApi.Application.Interfaces.Services;
 
 using NutritionApi.Application.DTOS.Users;
 
+/// <summary>Contrat des opérations RGPD : suppression, réactivation et export des données utilisateur.</summary>
 public interface IRgpdService
 {
     /// <summary>Initie la suppression du compte utilisateur.</summary>
