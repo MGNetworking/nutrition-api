@@ -6,6 +6,7 @@ using Moq;
 using NutritionApi.Api.Controllers;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.Nutrition;
+using NutritionApi.Application.Enums;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Domain.Enums;
 using System.Security.Claims;
@@ -51,7 +52,7 @@ public class NutritionControllerTest
     {
         var userId = SetControllerContext();
         var dietId = Guid.NewGuid();
-        var period = "week";
+        var period = BilanPeriod.Week;
         DateOnly? date = null;
         DateOnly? startDate = null;
         DateOnly? endDate = null;

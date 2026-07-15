@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.Nutrition;
+using NutritionApi.Application.Enums;
 using NutritionApi.Application.Interfaces.Services;
 
 namespace NutritionApi.Api.Controllers;
@@ -25,7 +26,7 @@ public class NutritionController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetBilan(
         [FromRoute] Guid id,
-        [FromQuery] string period,
+        [FromQuery] BilanPeriod? period,
         [FromQuery] DateOnly? date,
         [FromQuery] DateOnly? startDate,
         [FromQuery] DateOnly? endDate)
