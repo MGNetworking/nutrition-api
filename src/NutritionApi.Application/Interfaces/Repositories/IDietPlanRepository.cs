@@ -6,9 +6,9 @@ using NutritionApi.Domain.Entity;
 public interface IDietPlanRepository
 {
     /// <summary>Retourne un plan nutritionnel par son identifiant.</summary>
-    /// <param name="id">Identifiant du plan.</param>
+    /// <param name="planId">Identifiant du plan.</param>
     /// <returns>Le plan correspondant, ou <c>null</c> s'il n'existe pas.</returns>
-    Task<DietPlan?> GetByIdAsync(Guid id);
+    Task<DietPlan?> GetByIdAsync(Guid planId);
 
     /// <summary>Retourne tous les plans personnels d'un utilisateur.</summary>
     /// <param name="userId">Identifiant de l'utilisateur.</param>

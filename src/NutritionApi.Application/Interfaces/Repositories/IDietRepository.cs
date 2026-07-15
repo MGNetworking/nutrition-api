@@ -6,9 +6,9 @@ using NutritionApi.Domain.Entity;
 public interface IDietRepository
 {
     /// <summary>Retourne un régime par son identifiant.</summary>
-    /// <param name="id">Identifiant du régime.</param>
+    /// <param name="dietId">Identifiant du régime.</param>
     /// <returns>Le régime correspondant, ou <c>null</c> s'il n'existe pas.</returns>
-    Task<Diet?> GetByIdAsync(Guid id);
+    Task<Diet?> GetByIdAsync(Guid dietId);
 
     /// <summary>Retourne le régime actif de l'utilisateur.</summary>
     /// <param name="userId">Identifiant de l'utilisateur.</param>
