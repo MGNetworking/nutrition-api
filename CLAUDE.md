@@ -85,31 +85,10 @@ Racine de la documentation : `../docs/pages/backend/`
 
 ---
 
-## État courant du projet
+## Suivi du projet
 
-→ Voir `memory/project_state.md`
+L'état d'avancement n'est **pas** suivi dans ce fichier — la source de vérité est Jira :
 
-**Branche active :** `feature/NTR-2-application-layer`
-
-### Avancement Application Layer (NTR-2)
-
-| Ticket | Sujet | État |
-|---|---|---|
-| NTR-8 | UserService + RgpdService | ✅ |
-| NTR-36 | Créer/mettre à jour profil utilisateur | ✅ |
-| NTR-37 | Gestion des pesées (WeightEntry) | ✅ |
-| NTR-113 | Méthodes RGPD Domain + Application | ✅ |
-| NTR-114 | Export RGPD — DTO + ZIP controller | ✅ |
-| NTR-9 | DietPlansService | ✅ |
-| NTR-116 | Moteur de calcul nutritionnel | ✅ |
-| NTR-38 | CRUD plans personnels (DietPlan) | ✅ |
-| NTR-39 | Lister les templates partagés | ✅ |
-| NTR-40 | Lancer un DietPlan (LaunchAsync) | ✅ |
-| NTR-10 | Cycle de vie d'un régime (Diet) | ✅ |
-| NTR-11 | MealService | ✅ |
-| NTR-47 | SubscriptionGuard | ✅ |
-| NTR-95 | Contrôle tier DietPlan | ✅ |
-| NTR-96 | Restriction templates selon tier | ✅ |
-| NTR-12 | FoodItemService | 🔲 prochain |
-| NTR-13 | AdminService | 🔲 |
-| NTR-15 | NutritionService | 🔲 |
+- **Backlog et statuts :** https://maxime-ghalem.atlassian.net/ — projet `NTR`
+- **Accès :** MCP `atlassian` si chargé, sinon API REST (voir `memory/reference_jira.md`)
+- Ne consulter Jira que sur demande explicite de Maxime (règle "Docs locaux avant Jira")
