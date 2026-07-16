@@ -33,6 +33,9 @@ public class Meal
     /// <summary>True = repas sauvegardé dans la liste personnalisée (réutilisable) ; false = repas ponctuel.</summary>
     public bool IsSaved { get; private set; }
 
+    /// <summary>Date de saisie du repas dans le système (UTC) — distincte de <see cref="ConsumedAt"/> qui peut être rétroactive.</summary>
+    public DateTime CreatedAt { get; private set; }
+
     // Pour EF Core uniquement
     private Meal() { }
 
@@ -71,6 +74,7 @@ public class Meal
         ConsumedAt = consumedAt;
         MealItems = mealItems;
         IsSaved = isSaved;
+        CreatedAt = DateTime.UtcNow;
 
         Rename(name);
         ChangeNote(notes);

@@ -20,6 +20,10 @@ public interface IDietRepository
     /// <returns>Liste des régimes de l'utilisateur, vide si aucun.</returns>
     Task<List<Diet>> GetByUserIdAsync(Guid userId);
 
+    /// <summary>Retourne le nombre de régimes actifs, tous utilisateurs confondus.</summary>
+    /// <returns>Nombre de régimes avec le statut <c>Active</c>.</returns>
+    Task<int> CountActiveAsync();
+
     /// <summary>Persiste un nouveau régime.</summary>
     /// <param name="diet">Régime à ajouter.</param>
     Task AddAsync(Diet diet);

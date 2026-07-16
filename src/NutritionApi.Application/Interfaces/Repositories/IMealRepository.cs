@@ -33,4 +33,9 @@ public interface IMealRepository
     /// <param name="userId">Identifiant de l'utilisateur.</param>
     /// <returns>Nombre de repas sauvegardés.</returns>
     Task<int> CountSavedByUserIdAsync(Guid userId);
+
+    /// <summary>Retourne le nombre de repas saisis depuis une date, tous utilisateurs confondus.</summary>
+    /// <param name="since">Date de saisie minimale (UTC).</param>
+    /// <returns>Nombre de repas dont <c>CreatedAt</c> est postérieur ou égal à <paramref name="since"/>.</returns>
+    Task<int> CountCreatedSinceAsync(DateTime since);
 }
