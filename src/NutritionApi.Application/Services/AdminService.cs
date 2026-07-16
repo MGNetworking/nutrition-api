@@ -2,10 +2,13 @@ namespace NutritionApi.Application.Services;
 
 using NutritionApi.Application.DTOS.Admin;
 using NutritionApi.Application.DTOS.DietPlans;
+using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
+using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
+using NutritionApi.Domain.ValueObjects;
 
 /// <summary>
 /// Implémentation de <see cref="IAdminService"/>.
@@ -17,6 +20,7 @@ public class AdminService : IAdminService
     private readonly IDietRepository _dietRepository;
     private readonly IMealRepository _mealRepository;
     private readonly IFoodItemRepository _foodItemRepository;
+    private readonly IDietPlanRepository _dietPlanRepository;
     private readonly IJobMonitoringService _jobMonitoringService;
 
     public AdminService(
@@ -24,12 +28,14 @@ public class AdminService : IAdminService
         IDietRepository dietRepository,
         IMealRepository mealRepository,
         IFoodItemRepository foodItemRepository,
+        IDietPlanRepository dietPlanRepository,
         IJobMonitoringService jobMonitoringService)
     {
         _userRepository = userRepository;
         _dietRepository = dietRepository;
         _mealRepository = mealRepository;
         _foodItemRepository = foodItemRepository;
+        _dietPlanRepository = dietPlanRepository;
         _jobMonitoringService = jobMonitoringService;
     }
 
@@ -73,15 +79,71 @@ public class AdminService : IAdminService
             HangfireJobs: jobs);
     }
 
-    /// <summary>Non implémenté — prévu par un ticket ultérieur (gestion des templates).</summary>
-    public Task<DietPlanResponse> CreateTemplateAsync(CreateDietPlanRequest request)
-        => throw new NotImplementedException("Gestion des templates — ticket ultérieur.");
+    /// <summary>Crée un DietPlan template partagé — <c>IsTemplate</c> forcé à <c>true</c>, sans propriétaire (<c>UserId</c> null).</summary>
+    /// <param name="request">Données du template à créer.</param>
+    /// <returns>Le template créé.</returns>
+    /// <remarks>Le rôle <c>admin</c> est vérifié en amont par le controller (Keycloak).</remarks>
+    public async Task<DietPlanResponse> CreateTemplateAsync(CreateDietPlanRequest request)
+    {
+        var macro = new MacroDistribution(
+            request.MacroDistribution.ProteinPct,
+            request.MacroDistribution.CarbPct,
+            request.MacroDistribution.FatPct);
 
-    /// <summary>Non implémenté — prévu par un ticket ultérieur (gestion des templates).</summary>
-    public Task<DietPlanResponse> UpdateTemplateAsync(Guid templateId, UpdateDietPlanRequest request)
-        => throw new NotImplementedException("Gestion des templates — ticket ultérieur.");
+        var template = new DietPlan(
+            userId: null,
+            name: request.Name,
+            isTemplate: true,
+            dietType: request.DietType,
+            goal: request.Goal,
+            targetWeight: request.TargetWeight ?? 0f,
+            macroDistribution: macro);
 
-    /// <summary>Non implémenté — prévu par un ticket ultérieur (gestion des templates).</summary>
-    public Task DeleteTemplateAsync(Guid templateId)
-        => throw new NotImplementedException("Gestion des templates — ticket ultérieur.");
+        await _dietPlanRepository.AddAsync(template);
+        return DietPlanResponse.From(template);
+    }
+
+    /// <summary>Met à jour un DietPlan template existant.</summary>
+    /// <param name="templateId">Identifiant du template à modifier.</param>
+    /// <param name="request">Données mises à jour du template.</param>
+    /// <returns>Le template mis à jour.</returns>
+    /// <exception cref="NotFoundException">Aucun template ne correspond à cet identifiant — y compris si le plan existe mais est un plan personnel.</exception>
+    public async Task<DietPlanResponse> UpdateTemplateAsync(Guid templateId, UpdateDietPlanRequest request)
+    {
+        var template = await GetTemplateOrThrowAsync(templateId);
+
+        var macro = new MacroDistribution(
+            request.MacroDistribution.ProteinPct,
+            request.MacroDistribution.CarbPct,
+            request.MacroDistribution.FatPct);
+
+        template.Rename(request.Name);
+        template.ChangeDietType(request.DietType);
+        template.ChangeGoal(request.Goal);
+        if (request.TargetWeight.HasValue)
+            template.SetTargetWeight(request.TargetWeight.Value);
+        template.AdjustMacros(macro);
+
+        await _dietPlanRepository.UpdateAsync(template);
+        return DietPlanResponse.From(template);
+    }
+
+    /// <summary>Supprime un DietPlan template.</summary>
+    /// <param name="templateId">Identifiant du template à supprimer.</param>
+    /// <exception cref="NotFoundException">Aucun template ne correspond à cet identifiant — y compris si le plan existe mais est un plan personnel.</exception>
+    public async Task DeleteTemplateAsync(Guid templateId)
+    {
+        await GetTemplateOrThrowAsync(templateId);
+        await _dietPlanRepository.DeleteAsync(templateId);
+    }
+
+    /// <summary>Retourne le template demandé — un plan personnel n'est jamais atteignable par les opérations admin de templates.</summary>
+    /// <exception cref="NotFoundException">Le plan n'existe pas ou n'est pas un template.</exception>
+    private async Task<DietPlan> GetTemplateOrThrowAsync(Guid templateId)
+    {
+        var plan = await _dietPlanRepository.GetByIdAsync(templateId);
+        if (plan is null || !plan.IsTemplate)
+            throw new NotFoundException("Template not found.");
+        return plan;
+    }
 }

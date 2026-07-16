@@ -2,10 +2,14 @@ namespace NutritionApi.Application.Tests;
 
 using Moq;
 using NutritionApi.Application.DTOS.Admin;
+using NutritionApi.Application.DTOS.DietPlans;
+using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
+using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
+using NutritionApi.Domain.ValueObjects;
 
 public class AdminServiceTest
 {
@@ -13,6 +17,7 @@ public class AdminServiceTest
     private readonly Mock<IDietRepository> _dietRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IMealRepository> _mealRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IFoodItemRepository> _foodItemRepositoryMock = new(MockBehavior.Strict);
+    private readonly Mock<IDietPlanRepository> _dietPlanRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IJobMonitoringService> _jobMonitoringServiceMock = new(MockBehavior.Strict);
     private readonly AdminService _adminService;
 
@@ -23,8 +28,41 @@ public class AdminServiceTest
             _dietRepositoryMock.Object,
             _mealRepositoryMock.Object,
             _foodItemRepositoryMock.Object,
+            _dietPlanRepositoryMock.Object,
             _jobMonitoringServiceMock.Object);
     }
+
+    private static CreateDietPlanRequest BuildCreateTemplateRequest() => new(
+        Name: "Template méditerranéen",
+        DietType: DietType.Mediterranean,
+        Goal: Goal.WeightLoss,
+        TargetWeight: null,
+        MacroDistribution: new MacroDistributionDto(30, 40, 30));
+
+    private static UpdateDietPlanRequest BuildUpdateTemplateRequest() => new(
+        Name: "Template modifié",
+        DietType: DietType.Balanced,
+        Goal: Goal.Maintenance,
+        TargetWeight: null,
+        MacroDistribution: new MacroDistributionDto(25, 45, 30));
+
+    private static DietPlan BuildTemplate() => new(
+        userId: null,
+        name: "Template existant",
+        isTemplate: true,
+        dietType: DietType.Balanced,
+        goal: Goal.WeightLoss,
+        targetWeight: 0f,
+        macroDistribution: new MacroDistribution(30, 40, 30));
+
+    private static DietPlan BuildPersonalPlan() => new(
+        userId: Guid.NewGuid(),
+        name: "Plan personnel",
+        isTemplate: false,
+        dietType: DietType.Balanced,
+        goal: Goal.WeightLoss,
+        targetWeight: 75f,
+        macroDistribution: new MacroDistribution(30, 40, 30));
 
     private void SetupCounts(
         int free = 0, int pro = 0, int business = 0,
@@ -155,5 +193,94 @@ public class AdminServiceTest
 
         Assert.Null(result.LastImportAt);
         Assert.Single(result.HangfireJobs);
+    }
+
+    // --- CreateTemplateAsync ---
+
+    [Fact]
+    public async Task CreateTemplateAsync_ShouldCreateTemplateWithoutOwner_WhenRequestIsValid()
+    {
+        DietPlan? savedPlan = null;
+        _dietPlanRepositoryMock
+            .Setup(r => r.AddAsync(It.IsAny<DietPlan>()))
+            .Callback<DietPlan>(p => savedPlan = p)
+            .Returns(Task.CompletedTask);
+
+        var result = await _adminService.CreateTemplateAsync(BuildCreateTemplateRequest());
+
+        Assert.NotNull(savedPlan);
+        Assert.True(savedPlan.IsTemplate);
+        Assert.Null(savedPlan.UserId);
+        Assert.Equal("Template méditerranéen", result.Name);
+        _dietPlanRepositoryMock.Verify(r => r.AddAsync(It.IsAny<DietPlan>()), Times.Once);
+    }
+
+    // --- UpdateTemplateAsync ---
+
+    [Fact]
+    public async Task UpdateTemplateAsync_ShouldUpdateTemplate_WhenTemplateExists()
+    {
+        var template = BuildTemplate();
+        _dietPlanRepositoryMock.Setup(r => r.GetByIdAsync(template.Id)).ReturnsAsync(template);
+        _dietPlanRepositoryMock.Setup(r => r.UpdateAsync(template)).Returns(Task.CompletedTask);
+
+        var result = await _adminService.UpdateTemplateAsync(template.Id, BuildUpdateTemplateRequest());
+
+        Assert.Equal("Template modifié", result.Name);
+        _dietPlanRepositoryMock.Verify(r => r.UpdateAsync(template), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateTemplateAsync_ShouldThrow_WhenTemplateNotFound()
+    {
+        var templateId = Guid.NewGuid();
+        _dietPlanRepositoryMock.Setup(r => r.GetByIdAsync(templateId)).ReturnsAsync((DietPlan?)null);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _adminService.UpdateTemplateAsync(templateId, BuildUpdateTemplateRequest()));
+    }
+
+    [Fact]
+    public async Task UpdateTemplateAsync_ShouldThrow_WhenPlanIsNotATemplate()
+    {
+        var personalPlan = BuildPersonalPlan();
+        _dietPlanRepositoryMock.Setup(r => r.GetByIdAsync(personalPlan.Id)).ReturnsAsync(personalPlan);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _adminService.UpdateTemplateAsync(personalPlan.Id, BuildUpdateTemplateRequest()));
+    }
+
+    // --- DeleteTemplateAsync ---
+
+    [Fact]
+    public async Task DeleteTemplateAsync_ShouldDeleteTemplate_WhenTemplateExists()
+    {
+        var template = BuildTemplate();
+        _dietPlanRepositoryMock.Setup(r => r.GetByIdAsync(template.Id)).ReturnsAsync(template);
+        _dietPlanRepositoryMock.Setup(r => r.DeleteAsync(template.Id)).Returns(Task.CompletedTask);
+
+        await _adminService.DeleteTemplateAsync(template.Id);
+
+        _dietPlanRepositoryMock.Verify(r => r.DeleteAsync(template.Id), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteTemplateAsync_ShouldThrow_WhenTemplateNotFound()
+    {
+        var templateId = Guid.NewGuid();
+        _dietPlanRepositoryMock.Setup(r => r.GetByIdAsync(templateId)).ReturnsAsync((DietPlan?)null);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _adminService.DeleteTemplateAsync(templateId));
+    }
+
+    [Fact]
+    public async Task DeleteTemplateAsync_ShouldThrow_WhenPlanIsNotATemplate()
+    {
+        var personalPlan = BuildPersonalPlan();
+        _dietPlanRepositoryMock.Setup(r => r.GetByIdAsync(personalPlan.Id)).ReturnsAsync(personalPlan);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _adminService.DeleteTemplateAsync(personalPlan.Id));
     }
 }
