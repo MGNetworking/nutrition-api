@@ -1,6 +1,8 @@
 namespace NutritionApi.Application.Tests;
 
 using Moq;
+using NutritionApi.Application.DTOS.Admin;
+using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Enums;
@@ -10,6 +12,8 @@ public class AdminServiceTest
     private readonly Mock<IUserRepository> _userRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IDietRepository> _dietRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IMealRepository> _mealRepositoryMock = new(MockBehavior.Strict);
+    private readonly Mock<IFoodItemRepository> _foodItemRepositoryMock = new(MockBehavior.Strict);
+    private readonly Mock<IJobMonitoringService> _jobMonitoringServiceMock = new(MockBehavior.Strict);
     private readonly AdminService _adminService;
 
     public AdminServiceTest()
@@ -17,7 +21,9 @@ public class AdminServiceTest
         _adminService = new AdminService(
             _userRepositoryMock.Object,
             _dietRepositoryMock.Object,
-            _mealRepositoryMock.Object);
+            _mealRepositoryMock.Object,
+            _foodItemRepositoryMock.Object,
+            _jobMonitoringServiceMock.Object);
     }
 
     private void SetupCounts(
@@ -96,5 +102,58 @@ public class AdminServiceTest
         _userRepositoryMock.Verify(r => r.CountByTierAsync(SubscriptionTier.Business), Times.Once);
         _userRepositoryMock.Verify(r => r.CountInGracePeriodAsync(), Times.Once);
         _dietRepositoryMock.Verify(r => r.CountActiveAsync(), Times.Once);
+    }
+
+    // --- GetSystemHealthAsync — chemin nominal ---
+
+    [Fact]
+    public async Task GetSystemHealthAsync_ShouldReturnHealth_WhenJobsHaveRun()
+    {
+        var importLastRun = DateTime.UtcNow.AddHours(-3);
+        var purgeLastRun = DateTime.UtcNow.AddHours(-1);
+        var jobs = new List<HangfireJobResponse>
+        {
+            new(IJobMonitoringService.ImportOffJobName, importLastRun, DateTime.UtcNow.AddHours(21), "Succeeded"),
+            new(IJobMonitoringService.RgpdPurgeJobName, purgeLastRun, DateTime.UtcNow.AddHours(23), "Succeeded"),
+        };
+        _jobMonitoringServiceMock.Setup(s => s.GetJobsStatusAsync()).ReturnsAsync(jobs);
+        _foodItemRepositoryMock.Setup(r => r.CountAsync()).ReturnsAsync(1500);
+
+        var result = await _adminService.GetSystemHealthAsync();
+
+        Assert.Equal(1500, result.FoodItemsCount);
+        Assert.Equal(importLastRun, result.LastImportAt);
+        Assert.Equal(2, result.HangfireJobs.Count);
+    }
+
+    // --- GetSystemHealthAsync — cas limites ---
+
+    [Fact]
+    public async Task GetSystemHealthAsync_ShouldReturnNullLastImport_WhenNoJobsRegistered()
+    {
+        _jobMonitoringServiceMock.Setup(s => s.GetJobsStatusAsync()).ReturnsAsync([]);
+        _foodItemRepositoryMock.Setup(r => r.CountAsync()).ReturnsAsync(0);
+
+        var result = await _adminService.GetSystemHealthAsync();
+
+        Assert.Equal(0, result.FoodItemsCount);
+        Assert.Null(result.LastImportAt);
+        Assert.Empty(result.HangfireJobs);
+    }
+
+    [Fact]
+    public async Task GetSystemHealthAsync_ShouldReturnNullLastImport_WhenImportJobNeverRan()
+    {
+        var jobs = new List<HangfireJobResponse>
+        {
+            new(IJobMonitoringService.ImportOffJobName, null, DateTime.UtcNow.AddHours(2), "Scheduled"),
+        };
+        _jobMonitoringServiceMock.Setup(s => s.GetJobsStatusAsync()).ReturnsAsync(jobs);
+        _foodItemRepositoryMock.Setup(r => r.CountAsync()).ReturnsAsync(42);
+
+        var result = await _adminService.GetSystemHealthAsync();
+
+        Assert.Null(result.LastImportAt);
+        Assert.Single(result.HangfireJobs);
     }
 }
