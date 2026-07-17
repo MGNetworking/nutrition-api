@@ -1,6 +1,23 @@
+---
+name: update-tests
+description: Crée ou met à jour la classe de test unitaire d'un service Application (mocks Strict, fixtures, couverture nominal/limites/erreurs). À utiliser quand Maxime demande de créer ou mettre à jour les tests d'une classe de service.
+allowed-tools: Read, Glob, Grep, Write, Edit
+---
+
 # Skill — update-tests
 
 Crée ou met à jour une classe de test unitaire pour une classe de service.
+
+## Quand utiliser
+
+- Créer la classe de test d'un nouveau service Application (ex: `AdminService` → `AdminServiceTest`)
+- Resynchroniser les tests après modification d'un service existant
+- Régénérer les tests d'une seule méthode (ex: `/update-tests NutritionService GetBilanAsync`)
+
+**Ne pas utiliser pour :**
+- Les tests d'entités Domain ou de Value Objects
+- Les tests d'intégration (Infrastructure, EF Core)
+- Modifier l'implémentation du service — hors périmètre strict
 
 ## Usage
 
@@ -65,13 +82,16 @@ Relire l'implémentation complète et comparer avec les tests existants :
 - Remplacer uniquement les tests de cette méthode
 - Ne pas toucher les tests des autres méthodes
 
-### 5. Règles de génération
+### 5. Checklist de génération
 
-- Un test = un comportement = une assertion principale
-- Nommage : `MethodAsync_ShouldXxx_WhenYyy`
-- `MockBehavior.Strict` — tout appel non configuré lève une exception
-- Les tests doivent **compiler** mais être en état **Red** si l'implémentation n'est pas encore complète
-- Ne pas laisser de tests en `skip` ou commentés sans explication
+Avant de terminer, vérifier chaque point :
+
+- [ ] Un test = un comportement = une assertion principale
+- [ ] Nommage : `MethodAsync_ShouldXxx_WhenYyy`
+- [ ] `MockBehavior.Strict` sur chaque mock — tout appel non configuré lève une exception
+- [ ] `SubscriptionGuard` instancié directement (pas mocké)
+- [ ] Les tests **compilent** mais sont en état **Red** si l'implémentation n'est pas encore complète
+- [ ] Aucun test en `skip` ou commenté sans explication
 
 ### 6. Référence
 

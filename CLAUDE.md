@@ -79,8 +79,8 @@ Racine de la documentation : `../docs/pages/backend/`
 |---|---|
 | `.claude/rules/tdd.md` | TDD — Red/Green/Refactor, ordre fichiers, couverture attendue |
 | `.claude/rules/xml-documentation.md` | Documentation XML C# — interfaces, services, repositories, entités |
-| `.claude/conventions.md` | Stack technique + conventions de code (patterns, DTO, exceptions) |
-| `.claude/jira-workflow.md` | Workflow Jira — transitions, commits, commentaires |
+| `.claude/rules/conventions.md` | Conventions de code (workflow API-first, patterns, DTO, exceptions) |
+| `.claude/rules/jira-workflow.md` | Workflow Jira — transitions, commits, commentaires |
 | `CONTRIBUTING.md` | Workflow Git — branches, stratégie de merge, format de commit |
 
 ---

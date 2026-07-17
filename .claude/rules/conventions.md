@@ -1,18 +1,4 @@
-# Conventions de code & Stack technique
-
-## Stack technique
-
-| Composant | Technologie |
-|---|---|
-| Backend | C# 13 / ASP.NET Core 10 |
-| ORM | Entity Framework Core 10 + Npgsql |
-| Base de données | PostgreSQL |
-| Auth | Keycloak (OAuth2 / OIDC) |
-| Résilience | Polly |
-| Jobs planifiés | Hangfire |
-| Tests | xUnit + Moq + Testcontainers |
-| OpenAPI | Swashbuckle |
-| Déploiement | Kubernetes |
+# Conventions de code
 
 Architecture : **DDD 4 couches** — `Domain / Application / Infrastructure / Api`
 
