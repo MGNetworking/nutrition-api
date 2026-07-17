@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.FoodItems;
@@ -58,41 +57,6 @@ public class UsersController : ControllerBase
         var result = await _userService.UpdateUserProfileAsync(userKcId, updateUser);
 
         return Ok(result);
-    }
-
-    [HttpDelete("me")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteProfile()
-    {
-        var userKcId = HttpContext.User.FindFirstValue("sub")!;
-        await _userService.DeleteUserAsync(userKcId);
-
-        return NoContent();
-    }
-
-    [HttpPost("me/reactivate")]
-    [ProducesResponseType(typeof(UserProfileResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ReactivateUser(){
-
-        var userKcId = HttpContext.User.FindFirstValue("sub")!;
-        var userProfile = await _userService.ReactivateUserAsync(userKcId);
-
-        return Ok(userProfile);
-
-    }
-    
-    [HttpGet("me/export")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> ExportData()
-    {
-        var userKcId = HttpContext.User.FindFirstValue("sub")!;
-        var exportData = await _userService.ExportUserDataAsync(userKcId);
-
-        return Ok(exportData);
-
     }
 
     [HttpPost("me/weight-entries")]

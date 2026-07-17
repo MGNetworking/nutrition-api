@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using NutritionApi.Api.Controllers;
-using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Interfaces.Services;
-using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using System.Security.Claims;
 
@@ -45,7 +43,7 @@ public class DietPlansControllerTest
         DietType: DietType.Balanced,
         Goal: Goal.WeightLoss,
         TargetWeight: 75f,
-        MacroDistribution: new MacroDistributionDto(40f, 30f, 30f),
+        MacroDistribution: new MacroDistributionDto(40, 30, 30),
         IsTemplate: false
     );
 
@@ -56,7 +54,7 @@ public class DietPlansControllerTest
         Goal: Goal.WeightLoss,
         TargetWeight: 75f,
         CalorieTarget: 2000f,
-        MacroDistribution: new MacroDistributionDto(40f, 30f, 30f),
+        MacroDistribution: new MacroDistributionDto(40, 30, 30),
         Status: DietStatus.Active,
         StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
         EndDate: null
@@ -92,7 +90,7 @@ public class DietPlansControllerTest
             DietType: DietType.Balanced,
             Goal: Goal.WeightLoss,
             TargetWeight: 75f,
-            MacroDistribution: new MacroDistributionDto(40f, 30f, 30f)
+            MacroDistribution: new MacroDistributionDto(40, 30, 30)
         );
 
         var dietPlan = new DietPlanResponse(
@@ -128,11 +126,11 @@ public class DietPlansControllerTest
         var userId = SetControllerContext();
         var planId = Guid.NewGuid();
         var plan = new UpdateDietPlanRequest(
-            Name: "Mon plan modifié",
+            Name: "Mon plan modifiï¿½",
             DietType: DietType.LowCarb,
             Goal: Goal.Maintenance,
             TargetWeight: 80f,
-            MacroDistribution: new MacroDistributionDto(30f, 40f, 30f)
+            MacroDistribution: new MacroDistributionDto(30, 40, 30)
         );
 
         var planResponse = new DietPlanResponse(
@@ -175,44 +173,6 @@ public class DietPlansControllerTest
 
         // Assert
         _mockDietPlanService.Verify(s => s.DeleteAsync(userId, idDiete), Times.Once);
-    }
-
-    // -------------------------------------------------------------------------
-    // Lancement
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public async Task Launch_WhenPlanValid_ReturnsCreated()
-    {
-        // Arrange
-        var userId = SetControllerContext();
-        var idPlan = Guid.NewGuid();
-        var dietReponse = new DietResponse(
-            Id: Guid.NewGuid(),
-            Name: "Mon régime",
-            DietType: DietType.Balanced,
-            Goal: Goal.WeightLoss,
-            TargetWeight: 75f,
-            CalorieTarget: 2000f,
-            MacroDistribution: new MacroDistributionDto(40f, 30f, 30f),
-            Status: DietStatus.Active,
-            StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
-            EndDate: null
-        );
-
-        _mockDietPlanService
-            .Setup(s => s.LaunchAsync(userId, idPlan))
-            .ReturnsAsync(dietReponse);
-
-        // Act
-        var result = await _controller.Launch(idPlan);
-
-        // Assert
-        var ok = Assert.IsType<CreatedResult>(result);
-        Assert.Equal(dietReponse, ok.Value);
-
-        _mockDietPlanService.Verify(s => s.LaunchAsync(userId, idPlan), Times.Once);
-
     }
 
     // -------------------------------------------------------------------------

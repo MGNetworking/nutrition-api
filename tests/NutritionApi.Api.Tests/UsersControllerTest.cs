@@ -19,7 +19,9 @@ public class UsersControllerTest
 
     public UsersControllerTest()
     {
-        _usersController = new UsersController(_mockUserService.Object, _mockFoodItemService.Object);
+        _usersController = new UsersController(
+            _mockUserService.Object,
+            _mockFoodItemService.Object);
     }
 
     private string SetControllerContextClaim(string kcUserId = null!, Guid? userId = null)
@@ -135,68 +137,6 @@ public class UsersControllerTest
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(userProfileResponse, ok.Value);
         _mockUserService.Verify(s => s.UpdateUserProfileAsync(userKcId, updateUserProfileRequest), Times.Once);
-    }
-
-    [Fact]
-    public async Task DeleteProfile_WhenUserDeleted_ReturnsNoContent()
-    {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim();
-
-        _mockUserService
-            .Setup(s => s.DeleteUserAsync(userKcId))
-            .Returns(Task.CompletedTask);
-
-        // Act
-        var result = await _usersController.DeleteProfile();
-
-        // Assert
-        Assert.IsType<NoContentResult>(result);
-        _mockUserService.Verify(s => s.DeleteUserAsync(userKcId), Times.Once);
-    }
-
-    // -------------------------------------------------------------------------
-    // RGPD
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public async Task ReactivateUser_WhenInGracePeriod_ReturnsOk()
-    {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim();
-        var (_, userProfileResponse, _) = this.BuildUserProfileData();
-
-        _mockUserService
-            .Setup(s => s.ReactivateUserAsync(userKcId))
-            .ReturnsAsync(userProfileResponse);
-
-        // Act
-        var result = await _usersController.ReactivateUser();
-
-        // Assert
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(userProfileResponse, ok.Value);
-        _mockUserService.Verify(s => s.ReactivateUserAsync(userKcId), Times.Once);
-    }
-
-    [Fact]
-    public async Task ExportData_WhenUserExists_ReturnsOk()
-    {
-        // Arrange
-        var userKcId = this.SetControllerContextClaim();
-        var exportData = new object();
-
-        _mockUserService
-            .Setup(s => s.ExportUserDataAsync(userKcId))
-            .ReturnsAsync(exportData);
-
-        // Act
-        var result = await _usersController.ExportData();
-
-        // Assert
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(exportData, ok.Value);
-        _mockUserService.Verify(s => s.ExportUserDataAsync(userKcId), Times.Once);
     }
 
     // -------------------------------------------------------------------------

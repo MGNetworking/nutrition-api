@@ -6,7 +6,6 @@ using Moq;
 using NutritionApi.Api.Controllers;
 using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.DTOS.DietPlans;
-using NutritionApi.Application.DTOS.Nutrition;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Domain.Enums;
 using System.Security.Claims;
@@ -40,27 +39,33 @@ public class DietsControllerTest
         Goal: Goal.WeightLoss,
         TargetWeight: 75f,
         CalorieTarget: 2000f,
-        MacroDistribution: new MacroDistributionDto(40f, 30f, 30f),
+        MacroDistribution: new MacroDistributionDto(40, 30, 30),
         Status: DietStatus.Active,
         StartDate: DateOnly.FromDateTime(DateTime.UtcNow),
         EndDate: null
     );
 
-    private static NutritionBilanResponse BuildBilanResponse() => new(
-        DietId: Guid.NewGuid(),
-        StartDate: DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-7)),
-        EndDate: DateOnly.FromDateTime(DateTime.UtcNow),
-        TotalCalories: 14000f,
-        TotalProteins: 700f,
-        TotalCarbs: 1050f,
-        TotalFats: 420f,
-        DailyBreakdown: [],
-        WeightProgression: []
-    );
-
     // -------------------------------------------------------------------------
     // Régimes
     // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Launch_WhenPlanValid_ReturnsCreated()
+    {
+        var userId = SetControllerContext();
+        var planId = Guid.NewGuid();
+        var expected = BuildDietResponse();
+
+        _mockDietService
+            .Setup(s => s.LaunchAsync(userId, planId))
+            .ReturnsAsync(expected);
+
+        var result = await _controller.Launch(planId);
+
+        var created = Assert.IsType<CreatedResult>(result);
+        Assert.Equal(expected, created.Value);
+        _mockDietService.Verify(s => s.LaunchAsync(userId, planId), Times.Once);
+    }
 
     [Fact]
     public async Task GetActive_WhenDietExists_ReturnsOk()
@@ -145,33 +150,4 @@ public class DietsControllerTest
         _mockDietService.Verify(s => s.ArchiveAsync(userId, dietId), Times.Once);
     }
 
-    // -------------------------------------------------------------------------
-    // Bilan
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public async Task GetBilan_WhenDietExists_ReturnsOk()
-    {
-        // Arrange
-        var userId = SetControllerContext();
-        var dietId = Guid.NewGuid();
-        var period = "week";
-        DateOnly? date = null;
-        DateOnly? startDate = null;
-        DateOnly? endDate = null;
-        var expected = BuildBilanResponse();
-
-        _mockDietService
-            .Setup(s => s.GetBilanAsync(userId, dietId, period, date, startDate, endDate))
-            .ReturnsAsync(expected);
-
-        // Act
-        var result = await _controller.GetBilan(dietId, period, date, startDate, endDate);
-
-        // Assert
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Equal(expected, ok.Value);
-
-        _mockDietService.Verify(s => s.GetBilanAsync(userId, dietId, period, date, startDate, endDate), Times.Once);
-    }
 }

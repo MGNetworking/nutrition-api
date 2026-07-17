@@ -249,6 +249,25 @@ public class UserTest
         Assert.NotNull(user.DeletedAt);
     }
 
+
+    [Fact]
+    public void Reactivate_ThrowInvalidOperationExceptionTest()
+    {
+
+        User user = CreateUser();
+        Assert.Throws<InvalidOperationException>(() => user.Reactivate());
+    }
+
+    [Fact]
+    public void Reactivate_OKTest()
+    {
+        User user = CreateUser();
+        user.MarkAsDeleted();
+        user.Reactivate();
+        Assert.Null(user.DeletedAt);
+    }
+
+
     [Fact]
     public void Constructor_DeletedAt_IsNullByDefaultTest()
     {

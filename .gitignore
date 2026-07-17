@@ -1,4 +1,9 @@
 # ============================================================
+# Agent — données personnelles (non versionnées)
+# ============================================================
+.ai/user/
+
+# ============================================================
 # .NET / C#
 # ============================================================
 bin/
@@ -138,19 +143,6 @@ $RECYCLE.BIN/
 .Spotlight-V100
 .Trashes
 *~
-
-# ============================================================
-# Notes locales (non versionnées)
-# ============================================================
-ARCHITECTURE-DDD-4-COUCHES.md
-ARCHITECTURE-CQRS.md
-ARCHITECTURE-HEXAGONALE.md
-CONCEPTS.md
-AUTOMATISATION.md
-TICKETS-A-MODIFIER.md
-TDD.md
-SDD.md
-GIT-WORKFLOW.md
 
 # ============================================================
 # Secrets & configuration locale

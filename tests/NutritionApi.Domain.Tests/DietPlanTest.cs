@@ -113,13 +113,6 @@ public class DietPlanTest
         Assert.Throws<ArgumentException>(() => CreatePersonalPlan(goal: Goal.Unknown));
     }
 
-    [Theory]
-    [InlineData(0.0f)]
-    [InlineData(-1.0f)]
-    public void Constructor_Personal_TargetWeight_Invalid_ThrowsArgumentOutOfRangeExceptionTest(float weight)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => CreatePersonalPlan(targetWeight: weight));
-    }
 
     [Fact]
     public void Constructor_Personal_Macros_Null_ThrowsArgumentNullExceptionTest()

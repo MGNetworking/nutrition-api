@@ -7,6 +7,7 @@ on:
 jobs:
   build-and-test:
     name: Build & Tests unitaires
+    if: github.head_ref != 'main'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

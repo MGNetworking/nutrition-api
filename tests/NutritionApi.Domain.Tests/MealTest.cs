@@ -58,6 +58,17 @@ public class MealTest
     }
 
     [Fact]
+    public void Constructor_CreatedAt_IsSetToUtcNowTest()
+    {
+        var before = DateTime.UtcNow;
+
+        var meal = CreateMeal();
+
+        var after = DateTime.UtcNow;
+        Assert.InRange(meal.CreatedAt, before, after);
+    }
+
+    [Fact]
     public void Constructor_UserId_Empty_ThrowsArgumentExceptionTest()
     {
         Assert.Throws<ArgumentException>(() => CreateMeal(userId: Guid.Empty));

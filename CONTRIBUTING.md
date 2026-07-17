@@ -3,9 +3,9 @@
 ## Stratégie de branches
 
 ```
-feature/* ──squash PR──► dev ──PR──► prod (déploiement VPS)
-                          │
-             PR milestone──► main (release taguée vX.Y.Z)
+feature/* ──squash PR──► dev ──merge commit PR──► main (release taguée vX.Y.Z)
+                                                   │
+                                                   └──PR──► prod (déploiement VPS)
 ```
 
 ### Rôle de chaque branche
@@ -14,7 +14,7 @@ feature/* ──squash PR──► dev ──PR──► prod (déploiement VPS)
 |---------|------|---------------|-------------|
 | `feature/*` | Développement isolé d'une feature / Epic | — | — |
 | `dev` | Intégration — état courant du travail | `feature/*` via squash PR | — |
-| `prod` | Production — VPS | `dev` via PR | Automatique au merge |
+| `prod` | Production — VPS | `main` via PR | Automatique au merge |
 | `main` | Releases stables taguées | `dev` via PR milestone | Tag `vX.Y.Z` + CHANGELOG |
 
 ### Règles de protection
@@ -22,11 +22,11 @@ feature/* ──squash PR──► dev ──PR──► prod (déploiement VPS)
 Toutes les branches protégées appliquent :
 
 - PR obligatoire avant tout merge (aucun push direct)
-- CI `build-and-test` verte obligatoire
+- CI verte obligatoire (check requis selon la branche cible)
 - Branche à jour avec la cible avant merge
 - Force push et suppression interdits
 
-`main` et `prod` ont en plus `enforce_admins` activé — même l'admin du dépôt doit respecter les règles.
+`enforce_admins` est désactivé — l'admin du dépôt peut bypasser les règles si nécessaire (ex: PRs de sync ou Release Please).
 
 ---
 
@@ -37,8 +37,13 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 | PR | Workflow | Ce qui s'exécute |
 |----|----------|-----------------|
 | `feature/* → dev` | `ci-unit.yml` | Build + tests unitaires |
+| `main → dev` (sync) | `ci-unit.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → prod` | `ci-deploy.yml` | Build Release + déploiement VPS |
+| `main → prod` (sync) | `ci-deploy.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → main` | `ci-release.yml` | Build + tests unitaires + couverture + rapport PR |
+| Release Please PR | `ci-release.yml` | **ignoré** (`github.actor != 'github-actions[bot]'`) |
+
+> Les PRs de synchronisation `main → dev` et `main → prod` ne déclenchent pas le CI — le code vient de `main` qui est déjà testé. Les PRs automatiques de Release Please sont également ignorées pour éviter les boucles.
 
 ### Smoke tests — feuille de route
 
@@ -115,7 +120,7 @@ git push origin feature/<nom>
 
 La PR doit :
 - Référencer le ticket Jira (`#NTR-XX` dans le titre ou la description)
-- Avoir la CI verte (`build-and-test`)
+- Avoir la CI verte (`CI — Tests unitaires / Build & Tests unitaires`)
 - Être mergée en **squash merge** (1 commit propre par PR)
 
 ---
@@ -134,6 +139,8 @@ Le merge déclenche `ci-deploy.yml` :
 ## Workflow dev → main (release)
 
 Les merges vers `main` correspondent à des **milestones produit** (fin d'une ou plusieurs Epics).
+
+La PR `dev → main` doit être mergée avec **"Create a merge commit"** (pas squash) pour préserver l'historique et éviter la divergence entre `dev` et `main`.
 
 Versionnage sémantique :
 
@@ -164,10 +171,19 @@ Le CHANGELOG est généré automatiquement par [Release Please](https://github.c
 # Voir l'état de toutes les branches
 git branch -a
 
-# Synchroniser dev localement
-git checkout dev && git pull origin dev
+# Mettre à jour les branches locales (option 1 — avec checkout)
+git checkout main && git pull origin main
+git checkout dev  && git pull origin dev
+git checkout prod && git pull origin prod
+
+# Mettre à jour les branches locales (option 2 — sans changer de branche)
+git fetch origin
+git branch -f main origin/main   # déplace le pointeur local main sur origin/main
+git branch -f dev  origin/dev
+git branch -f prod origin/prod
 
 # Créer une branche feature
+git checkout dev
 git checkout -b feature/<nom>
 
 # Pousser et suivre la branche distante

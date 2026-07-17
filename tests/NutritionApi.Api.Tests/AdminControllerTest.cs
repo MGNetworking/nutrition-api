@@ -54,7 +54,7 @@ public class AdminControllerTest
         DietType: DietType.Keto,
         Goal: Goal.WeightLoss,
         TargetWeight: null,
-        MacroDistribution: new MacroDistributionDto(30f, 10f, 60f),
+        MacroDistribution: new MacroDistributionDto(30, 10, 60),
         IsTemplate: true
     );
 
@@ -116,7 +116,7 @@ public class AdminControllerTest
             DietType: DietType.Keto,
             Goal: Goal.WeightLoss,
             TargetWeight: null,
-            MacroDistribution: new MacroDistributionDto(30f, 10f, 60f)
+            MacroDistribution: new MacroDistributionDto(30, 10, 60)
         );
         var response = BuildDietPlanResponse();
 
@@ -144,7 +144,7 @@ public class AdminControllerTest
             DietType: DietType.Keto,
             Goal: Goal.WeightLoss,
             TargetWeight: null,
-            MacroDistribution: new MacroDistributionDto(30f, 10f, 60f)
+            MacroDistribution: new MacroDistributionDto(30, 10, 60)
         );
         var response = BuildDietPlanResponse();
 
