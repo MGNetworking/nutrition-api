@@ -48,6 +48,9 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo { Title = "Nutrition API", Version = "v1" });
 
+    // Active la prise en compte des attributs [SwaggerOperation] sur les actions
+    options.EnableAnnotations();
+
     // Permet de saisir le token JWT directement dans l'UI Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {

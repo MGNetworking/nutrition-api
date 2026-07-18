@@ -3,6 +3,16 @@ using NutritionApi.Domain.Entity;
 
 namespace NutritionApi.Application.DTOS.Users;
 
+/// <summary>Profil de l'utilisateur connecté.</summary>
+/// <param name="Id">Identifiant interne de l'utilisateur.</param>
+/// <param name="BirthDate">Date de naissance de l'utilisateur.</param>
+/// <param name="Gender">Genre de l'utilisateur.</param>
+/// <param name="ActivityLevel">Niveau d'activité physique.</param>
+/// <param name="Height">Taille de l'utilisateur, en centimètres.</param>
+/// <param name="Allergies">Allergènes de l'utilisateur.</param>
+/// <param name="DietaryPreferences">Préférences alimentaires libres.</param>
+/// <param name="SubscriptionTier">Palier d'abonnement (Free, Pro ou Business).</param>
+/// <param name="CreatedAt">Date de création du compte (UTC).</param>
 public record UserProfileResponse(
     Guid Id,
     DateOnly BirthDate,
@@ -15,6 +25,7 @@ public record UserProfileResponse(
     DateTime CreatedAt
 )
 {
+    /// <summary>Construit la réponse à partir de l'entité <see cref="User"/>.</summary>
     public static UserProfileResponse From(User user)
         => new(user.Id,
             user.BirthDate,

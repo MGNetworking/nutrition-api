@@ -4,6 +4,7 @@ using NutritionApi.Api.Extensions;
 using NutritionApi.Application.DTOS.Nutrition;
 using NutritionApi.Application.Enums;
 using NutritionApi.Application.Interfaces.Services;
+using Swashbuckle.AspNetCore.Annotations;
 
 namespace NutritionApi.Api.Controllers;
 
@@ -21,9 +22,14 @@ public class NutritionController : ControllerBase
 
     /// <summary>Bilan nutritionnel d'un régime sur une période donnée.</summary>
     [HttpGet("{id:guid}/bilan")]
+    [SwaggerOperation(
+        Summary = "Bilan nutritionnel d'un régime",
+        Description = "Agrège les apports vs objectifs du régime sur la période demandée (?period=, ?date=, ?startDate=, ?endDate=). L'accès au bilan dépend du tier d'abonnement (403).")]
     [ProducesResponseType(typeof(NutritionBilanResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetBilan(
         [FromRoute] Guid id,
         [FromQuery] BilanPeriod? period,
