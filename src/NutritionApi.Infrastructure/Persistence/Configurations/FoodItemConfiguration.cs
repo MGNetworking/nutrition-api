@@ -23,6 +23,12 @@ public class FoodItemConfiguration : IEntityTypeConfiguration<FoodItem>
                .HasMaxLength(500);
         builder.HasIndex(f => f.Name);
 
+        // La convention snake_case produirait "per100g" — le schéma attend "per_100g"
+        builder.Property(f => f.CaloriesPer100g).HasColumnName("calories_per_100g");
+        builder.Property(f => f.ProteinsPer100g).HasColumnName("proteins_per_100g");
+        builder.Property(f => f.CarbsPer100g).HasColumnName("carbs_per_100g");
+        builder.Property(f => f.FatsPer100g).HasColumnName("fats_per_100g");
+
         builder.Property(f => f.AllergensTags)
                .HasColumnType("text[]")
                .HasConversion(
