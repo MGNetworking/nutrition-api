@@ -5,6 +5,7 @@ using Microsoft.OpenApi.Models;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Application;
+using NutritionApi.Infrastructure;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,11 @@ builder.Services.AddScoped<UserResolutionMiddleware>();
 
 // ── Application layer ──────────────────────────────────────────────────────────
 builder.Services.AddApplication();
+
+// ── Infrastructure layer ───────────────────────────────────────────────────────
+// DbContext EF Core (PostgreSQL, snake_case), IUnitOfWork et repositories
+builder.Services.AddInfrastructure(builder.Configuration);
+
 builder.Services.AddControllers();
 
 // ── Authentification ───────────────────────────────────────────────────────────

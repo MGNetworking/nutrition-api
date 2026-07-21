@@ -41,6 +41,29 @@ Utiliser les fichiers locaux en priorité — ne jamais appeler Jira sans demand
 
 ---
 
+## Décisions d'architecture
+
+Arbitrages actés — ne pas les remettre en cause sans demande explicite de Maxime.
+
+| Sujet | Décision | Date |
+|---|---|---|
+| Tests d'intégration externe (niveau 3) | **docker-compose** avec les 3 services (PostgreSQL, Redis, **Keycloak**) — réutilisé en CI. Testcontainers écarté. | 2026-07-21 |
+| Déploiement production | **VPS** (le *où*) + **K3s** (l'orchestrateur) — les manifests restent portables vers un cloud managé. | 2026-07-21 |
+
+**Trois environnements distincts**, sans obligation d'alignement entre eux :
+
+| Environnement | Orchestrateur |
+|---|---|
+| Dev local | docker-compose |
+| CI — tests niveau 3 | docker-compose |
+| Production | K3s |
+
+Seules les **versions d'images** doivent rester alignées entre le docker-compose et les manifests K3s.
+
+> Les mentions « Kubernetes » dans `CONFIGURATION.md` et les docs de design sont **correctes** (K3s = Kubernetes allégé) — ne pas les retirer.
+
+---
+
 ## Fichiers clés — où chercher quoi
 
 Racine de la documentation : `../docs/pages/backend/`
