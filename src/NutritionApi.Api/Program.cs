@@ -33,6 +33,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.Authority = builder.Configuration["Keycloak:Authority"];
         options.Audience  = builder.Configuration["Keycloak:Audience"];
+
+        // Autorise un Authority en HTTP hors production (Keycloak local).
+        // Défaut à true si la clé est absente : HTTPS exigé par défaut.
+        options.RequireHttpsMetadata = builder.Configuration.GetValue("Keycloak:RequireHttpsMetadata", true);
+
+        // Conserve les noms de claims d'origine du JWT. Sans cela, "sub" est remappé vers
+        // ClaimTypes.NameIdentifier et FindFirstValue("sub") — utilisé par
+        // UserResolutionMiddleware et les controllers — retourne null.
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer           = true,  // Vérifie que le token provient bien de Keycloak

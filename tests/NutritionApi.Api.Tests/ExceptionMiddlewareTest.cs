@@ -1,12 +1,13 @@
 namespace NutritionApi.Api.Tests;
 
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Application.Exceptions;
 
 public class ExceptionMiddlewareTest
 {
-    private readonly ExceptionMiddleware _middleware = new();
+    private readonly ExceptionMiddleware _middleware = new(NullLogger<ExceptionMiddleware>.Instance);
 
     private static DefaultHttpContext CreateContext()
     {

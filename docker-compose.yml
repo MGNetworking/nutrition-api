@@ -1,0 +1,72 @@
+# Environnement de développement local et tests d'intégration (NTR-81)
+#
+# L'API tourne sur le host (dotnet run) et se connecte à ces services via localhost:PORT.
+# Versions figées — à maintenir alignées avec les manifests K3s de production (NTR-124).
+#
+# Séquence de démarrage :
+#   docker compose up -d
+#   dotnet ef database update --project src/NutritionApi.Infrastructure --startup-project src/NutritionApi.Api
+#   psql -h localhost -p 5445 -U postgres -d nutrition_dev -f seed-dev.sql
+#   dotnet run --project src/NutritionApi.Api
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: nutrition-postgres
+    environment:
+      POSTGRES_DB: nutrition_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      # Ports externes décalés pour ne pas entrer en conflit avec des instances
+      # déjà présentes sur le poste. Les ports internes restent standards.
+      - "5445:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nutrition_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    container_name: nutrition-redis
+    ports:
+      - "6336:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: nutrition-keycloak
+    # start-dev : base H2 embarquée, pas de volume — le realm est réimporté à chaque
+    # recréation du conteneur, ce qui garantit un environnement reproductible.
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8778:8080"
+    volumes:
+      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    healthcheck:
+      # Le endpoint de santé est exposé sur le port de management (9000), pas sur 8080.
+      # L'image ne contient ni curl ni wget : on passe par /dev/tcp de bash.
+      test:
+        - CMD-SHELL
+        - "exec 3<>/dev/tcp/127.0.0.1/9000; printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q 'UP' <&3"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  postgres-data:
+  redis-data:

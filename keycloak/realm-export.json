@@ -1,0 +1,107 @@
+{
+  "realm": "nutrition",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 1800,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Utilisateur standard de l'application"
+      },
+      {
+        "name": "admin",
+        "description": "Administrateur — accès au back-office /api/v1/admin/**"
+      }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "nutrition-api",
+      "name": "Nutrition API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocolMappers": [
+        {
+          "name": "audience-nutrition-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "nutrition-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "id": "11111111-0000-0000-0000-000000000001",
+      "username": "test-user",
+      "email": "test-user@nutrition.local",
+      "firstName": "Test",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000002",
+      "username": "test-pro",
+      "email": "test-pro@nutrition.local",
+      "firstName": "Test",
+      "lastName": "Pro",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000003",
+      "username": "test-admin",
+      "email": "test-admin@nutrition.local",
+      "firstName": "Test",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user", "admin"]
+    }
+  ]
+}
