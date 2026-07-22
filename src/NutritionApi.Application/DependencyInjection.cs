@@ -17,10 +17,11 @@ public static class ApplicationExtensions
         services.AddScoped<IDietService, DietService>();
         services.AddScoped<IMealService, MealService>();
         services.AddScoped<INutritionService, NutritionService>();
+        services.AddScoped<IFoodItemService, FoodItemService>();
 
-        // IFoodItemService et IAdminService ne sont pas encore enregistrables : leurs dépendances
-        // Infrastructure n'existent pas (IFoodCacheService → NTR-54, IJobMonitoringService → NTR-55).
-        // Les enregistrer maintenant ferait échouer la validation du conteneur au démarrage.
+        // IAdminService n'est pas encore enregistrable : IJobMonitoringService n'a pas
+        // d'implémentation (NTR-55). L'enregistrer maintenant ferait échouer la validation
+        // du conteneur au démarrage.
 
         return services;
     }

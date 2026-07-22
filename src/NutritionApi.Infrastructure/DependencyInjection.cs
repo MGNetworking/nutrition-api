@@ -4,9 +4,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NutritionApi.Application.Interfaces;
+using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
+using NutritionApi.Infrastructure.Caching;
 using NutritionApi.Infrastructure.Persistence;
 using NutritionApi.Infrastructure.Persistence.Repositories;
+using StackExchange.Redis;
 
 public static class InfrastructureExtensions
 {
@@ -31,6 +34,21 @@ public static class InfrastructureExtensions
         services.AddScoped<IFoodItemRepository, FoodItemRepository>();
         services.AddScoped<IWeightEntryRepository, WeightEntryRepository>();
         services.AddScoped<ISavedFoodItemRepository, SavedFoodItemRepository>();
+
+        // ── Redis ─────────────────────────────────────────────────────────────
+        // Le multiplexeur est coûteux à créer et thread-safe : une seule instance partagée.
+        services.AddSingleton<IConnectionMultiplexer>(_ =>
+        {
+            var options = ConfigurationOptions.Parse(configuration["Redis:ConnectionString"]!);
+
+            // Sans cela, une instance Redis indisponible empêcherait l'API de démarrer :
+            // la connexion est retentée en arrière-plan au lieu d'échouer immédiatement.
+            options.AbortOnConnectFail = false;
+
+            return ConnectionMultiplexer.Connect(options);
+        });
+
+        services.AddScoped<IFoodCacheService, RedisFoodCacheService>();
 
         return services;
     }
