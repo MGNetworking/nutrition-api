@@ -1,5 +1,6 @@
 ﻿using NutritionApi.Application.DTOS.FoodItems;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
@@ -19,19 +20,22 @@ public class FoodItemService : IFoodItemService
     private readonly IFoodCacheService _foodCache;
     private readonly IUserRepository _userRepository;
     private readonly SubscriptionGuard _subscriptionGuard;
+    private readonly IUnitOfWork _unitOfWork;
 
     public FoodItemService(
         IFoodItemRepository foodItemRepository,
         ISavedFoodItemRepository savedFoodItemRepository,
         IFoodCacheService foodCache,
         IUserRepository userRepository,
-        SubscriptionGuard subscriptionGuard)
+        SubscriptionGuard subscriptionGuard,
+        IUnitOfWork unitOfWork)
     {
         _foodItemRepository = foodItemRepository;
         _savedFoodItemRepository = savedFoodItemRepository;
         _foodCache = foodCache;
         _userRepository = userRepository;
         _subscriptionGuard = subscriptionGuard;
+        _unitOfWork = unitOfWork;
     }
 
 
@@ -82,7 +86,7 @@ public class FoodItemService : IFoodItemService
             throw new ForbiddenException("You are not authorized to remove this saved food item.");
 
         await _savedFoodItemRepository.DeleteAsync(savedId);
-
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>
@@ -119,6 +123,8 @@ public class FoodItemService : IFoodItemService
         savedFoodItem = new SavedFoodItem(userId, foodItem.Id);
 
         await _savedFoodItemRepository.AddAsync(savedFoodItem);
+        await _unitOfWork.SaveChangesAsync();
+
         return SavedFoodItemResponse.From(savedFoodItem, foodItem);
     }
 

@@ -85,6 +85,91 @@ Scénario end-to-end léger :
 
 ---
 
+## Environnement de développement local
+
+L'API tourne sur la machine hôte ; PostgreSQL, Redis et Keycloak tournent dans des conteneurs.
+
+### Prérequis
+
+- Docker Desktop démarré
+- SDK .NET et l'outil EF Core : `dotnet tool install --global dotnet-ef`
+
+### Démarrer
+
+```bash
+./scripts/dev-up.sh
+```
+
+Le script démarre les trois services, attend qu'ils soient prêts, applique les migrations EF Core
+et charge les données de test. Il ne lance pas l'API : celle-ci se démarre depuis l'IDE avec le
+débogueur, ou par `dotnet run --project src/NutritionApi.Api`.
+
+Le script est idempotent — le relancer sur un environnement déjà démarré ne pose aucun problème.
+
+### Arrêter et réinitialiser
+
+```bash
+./scripts/dev-down.sh              # arrête les services, conserve les données
+./scripts/dev-down.sh --volumes    # arrête les services et supprime les données
+./scripts/dev-reset.sh             # repart d'une base vierge (migrations + seed rejoués)
+```
+
+### Services et comptes
+
+| Service | Adresse |
+|---|---|
+| PostgreSQL | `localhost:5445` — base `nutrition_dev`, `postgres` / `postgres` |
+| Redis | `localhost:6336` |
+| Keycloak | `http://localhost:8778` — console admin `admin` / `admin` |
+| API | `http://localhost:5099` — Swagger sur `/swagger` |
+
+Comptes de test provisionnés automatiquement, mot de passe `test` :
+
+| Compte | Rôle Keycloak | Abonnement |
+|---|---|---|
+| `test-user` | `user` | Free |
+| `test-pro` | `user` | Pro |
+| `test-admin` | `admin` | Free |
+
+Obtenir un jeton :
+
+```bash
+curl -X POST "http://localhost:8778/realms/nutrition/protocol/openid-connect/token" \
+  -d "client_id=nutrition-api" -d "grant_type=password" \
+  -d "username=test-user" -d "password=test"
+```
+
+> Les ports externes sont volontairement décalés (5445, 6336, 8778) pour ne pas entrer en conflit
+> avec des instances déjà présentes sur le poste. Les ports internes aux conteneurs restent standards.
+
+### Mode Docker — API conteneurisée
+
+Pour valider l'image de l'API ou reproduire un fonctionnement proche de la production, l'API peut
+tourner dans un conteneur aux côtés de ses services :
+
+```bash
+./scripts/docker-up.sh              # build si nécessaire, puis démarre la stack complète
+./scripts/docker-up.sh --rebuild    # force la reconstruction des images
+./scripts/dev-down.sh               # arrête l'ensemble
+```
+
+L'API est alors exposée sur `http://localhost:5100` — port distinct de 5099 pour que les deux modes
+puissent coexister. Elle charge `appsettings.Docker.json` et joint les services par leur nom
+(`postgres`, `redis`, `keycloak`).
+
+Les services `api` et `migrations` sont déclarés sous le profil Compose `full` : `docker compose up -d`
+continue de ne démarrer que les trois services d'infrastructure.
+
+**Migrations.** Un conteneur one-shot les applique puis s'arrête ; l'API ne démarre qu'après sa réussite
+(`depends_on` / `service_completed_successfully`). L'API n'applique jamais les migrations elle-même :
+la base n'évolue qu'au déploiement. Ce schéma préfigure le Job Kubernetes de production.
+
+```
+postgres healthy  →  migrations (exit 0)  →  api
+```
+
+---
+
 ## Workflow feature → dev
 
 ### 1. Créer la branche feature depuis `dev`
@@ -189,3 +274,41 @@ git checkout -b feature/<nom>
 # Pousser et suivre la branche distante
 git push -u origin feature/<nom>
 ```
+
+## Collection Postman
+
+Une collection de développement est versionnée dans `postman/` :
+
+| Fichier | Contenu |
+|---|---|
+| `nutrition-api.postman_collection.json` | Les 36 endpoints, groupés par ressource |
+| `nutrition-dev.postman_environment.json` | Mode dev — API sur le host, port 5099 |
+| `nutrition-docker.postman_environment.json` | Mode Docker — API conteneurisée, port 5100 |
+
+### Utilisation
+
+1. Importer la collection et les deux environnements dans Postman
+2. **Sélectionner l'environnement correspondant à la façon dont l'API tourne** — « Dev local » après
+   un `dotnet run`, « Docker » après un `./scripts/docker-up.sh`. Se tromper d'environnement donne des
+   requêtes qui n'aboutissent pas.
+3. Exécuter une requête du dossier **Authentification** — le jeton est enregistré automatiquement
+   et appliqué à toutes les requêtes suivantes
+
+> **Les dossiers Users et Admin renvoient actuellement 500.** Leurs controllers injectent respectivement
+> `IFoodItemService` (NTR-54) et `IAdminService` (NTR-55), non enregistrés tant que leurs dépendances
+> Infrastructure n'existent pas. Le controller entier devient inconstructible — y compris pour les
+> endpoints sans rapport avec ces services, comme la lecture du profil ou l'historique des pesées.
+> Les dossiers **Diet Plans**, **Diets**, **Meals** et **Nutrition** sont pleinement fonctionnels.
+
+Trois requêtes de jeton sont fournies, une par compte de test, pour basculer d'un profil à l'autre
+(Free, Pro, admin) sans manipulation.
+
+> **Les enums sont sérialisés en nombres, pas en chaînes** — aucun `JsonStringEnumConverter` n'est
+> configuré. Exemple : `"gender": 1` (Male), `"mealType": 2` (Lunch). Les correspondances sont
+> documentées dans la description de chaque requête.
+
+Les identifiants par défaut de l'environnement correspondent aux données de `seed-dev.sql` : les
+requêtes fonctionnent sans réglage préalable après un `./scripts/dev-up.sh`.
+
+> Périmètre : outil de développement et de documentation. Cette collection n'est **pas** exécutée en
+> CI — les tests automatisés sont en xUnit (voir `docs/pages/backend/features/tests-integration.md`).

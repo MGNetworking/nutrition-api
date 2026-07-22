@@ -1,0 +1,32 @@
+# Image one-shot d'application des migrations EF Core.
+#
+# Elle démarre, applique les migrations en attente, puis s'arrête. L'API ne migre
+# jamais elle-même au démarrage : la base n'évolue qu'au déploiement.
+#
+# Ce conteneur préfigure le Job Kubernetes.
+#
+# L'image aspnet de l'API ne contient que le runtime : les outils EF exigent le SDK,
+# d'où cette image distincte.
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+WORKDIR /src
+
+# Version alignée sur les PackageReference Microsoft.EntityFrameworkCore.Design
+RUN dotnet tool install --global dotnet-ef --version 10.0.4
+ENV PATH="${PATH}:/root/.dotnet/tools"
+
+# Restauration en couche séparée : seuls les .csproj invalident ce cache
+COPY ["src/NutritionApi.Api/NutritionApi.Api.csproj", "src/NutritionApi.Api/"]
+COPY ["src/NutritionApi.Application/NutritionApi.Application.csproj", "src/NutritionApi.Application/"]
+COPY ["src/NutritionApi.Domain/NutritionApi.Domain.csproj", "src/NutritionApi.Domain/"]
+COPY ["src/NutritionApi.Infrastructure/NutritionApi.Infrastructure.csproj", "src/NutritionApi.Infrastructure/"]
+RUN dotnet restore "src/NutritionApi.Api/NutritionApi.Api.csproj"
+
+COPY src/ src/
+
+# La chaîne de connexion est fournie par NUTRITION_DB_CONNECTION, lue en priorité
+# par DesignTimeDbContextFactory.
+ENTRYPOINT ["dotnet", "ef", "database", "update", \
+    "--project", "src/NutritionApi.Infrastructure", \
+    "--startup-project", "src/NutritionApi.Api"]

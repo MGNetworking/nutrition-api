@@ -1,5 +1,6 @@
 using NutritionApi.Application.DTOS.Meals;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Application.Services.Nutrition;
@@ -18,17 +19,20 @@ public class MealService : IMealService
     private readonly IFoodItemRepository _foodItemRepository;
     private readonly IUserRepository _userRepository;
     private readonly SubscriptionGuard _subscriptionGuard;
+    private readonly IUnitOfWork _unitOfWork;
 
     public MealService(
         IMealRepository mealRepository,
         IFoodItemRepository foodItemRepository,
         IUserRepository userRepository,
-        SubscriptionGuard subscriptionGuard)
+        SubscriptionGuard subscriptionGuard,
+        IUnitOfWork unitOfWork)
     {
         _mealRepository = mealRepository;
         _foodItemRepository = foodItemRepository;
         _userRepository = userRepository;
         _subscriptionGuard = subscriptionGuard;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>Crée un repas avec ses MealItems et calcule la NutritionInfo de chaque item.</summary>
@@ -79,6 +83,8 @@ public class MealService : IMealService
             request.IsSaved);
 
         await _mealRepository.AddAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 
@@ -134,6 +140,8 @@ public class MealService : IMealService
             meal.ChangeConsumedAt(request.ConsumedAt.Value);
 
         await _mealRepository.UpdateAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 
@@ -151,6 +159,7 @@ public class MealService : IMealService
             throw new ForbiddenException("You do not have access to this meal.");
 
         await _mealRepository.DeleteAsync(mealId);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>Ajoute un MealItem à un repas existant avec calcul de la NutritionInfo.</summary>
@@ -176,6 +185,8 @@ public class MealService : IMealService
         meal.AddMealItem(new MealItem(meal.Id, foodItem.Id, request.Quantity, nutrition) { FoodItem = foodItem });
 
         await _mealRepository.UpdateAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 
@@ -197,6 +208,8 @@ public class MealService : IMealService
         meal.RemoveMealItem(itemId);
 
         await _mealRepository.UpdateAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 }

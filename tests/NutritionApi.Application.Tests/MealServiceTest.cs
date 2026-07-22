@@ -3,6 +3,7 @@ namespace NutritionApi.Application.Tests;
 using Moq;
 using NutritionApi.Application.DTOS.Meals;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
@@ -15,15 +16,19 @@ public class MealServiceTest
     private readonly Mock<IFoodItemRepository> _foodItemRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _userRepositoryMock = new(MockBehavior.Strict);
     private readonly SubscriptionGuard _subscriptionGuard = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new(MockBehavior.Strict);
     private readonly MealService _mealService;
 
     public MealServiceTest()
     {
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
+
         _mealService = new MealService(
             _mealRepositoryMock.Object,
             _foodItemRepositoryMock.Object,
             _userRepositoryMock.Object,
-            _subscriptionGuard);
+            _subscriptionGuard,
+            _unitOfWorkMock.Object);
     }
 
     private static FoodItem BuildFoodItem()
@@ -64,6 +69,7 @@ public class MealServiceTest
 
         Assert.IsType<MealResponse>(result);
         _mealRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Meal>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -172,6 +178,7 @@ public class MealServiceTest
 
         Assert.IsType<MealResponse>(result);
         _mealRepositoryMock.Verify(r => r.UpdateAsync(meal), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -210,6 +217,7 @@ public class MealServiceTest
         await _mealService.DeleteAsync(userId, meal.Id);
 
         _mealRepositoryMock.Verify(r => r.DeleteAsync(meal.Id), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -250,6 +258,7 @@ public class MealServiceTest
 
         Assert.IsType<MealResponse>(result);
         _mealRepositoryMock.Verify(r => r.UpdateAsync(meal), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -307,6 +316,7 @@ public class MealServiceTest
 
         Assert.IsType<MealResponse>(result);
         _mealRepositoryMock.Verify(r => r.UpdateAsync(meal), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]

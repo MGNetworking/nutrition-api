@@ -1,5 +1,6 @@
 using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Application.Services.Nutrition;
@@ -19,19 +20,22 @@ public class DietService : IDietService
     private readonly IUserRepository _userRepository;
     private readonly IWeightEntryRepository _weightEntryRepository;
     private readonly SubscriptionGuard _subscriptionGuard;
+    private readonly IUnitOfWork _unitOfWork;
 
     public DietService(
         IDietRepository dietRepository,
         IDietPlanRepository dietPlanRepository,
         IUserRepository userRepository,
         IWeightEntryRepository weightEntryRepository,
-        SubscriptionGuard subscriptionGuard)
+        SubscriptionGuard subscriptionGuard,
+        IUnitOfWork unitOfWork)
     {
         _dietRepository = dietRepository;
         _dietPlanRepository = dietPlanRepository;
         _userRepository = userRepository;
         _weightEntryRepository = weightEntryRepository;
         _subscriptionGuard = subscriptionGuard;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>Lance un DietPlan et crée une Diet active avec snapshot des données nutritionnelles gelées à la date du lancement.</summary>
@@ -80,6 +84,8 @@ public class DietService : IDietService
             plan.MacroDistribution);
 
         await _dietRepository.AddAsync(diet);
+        await _unitOfWork.SaveChangesAsync();
+
         return DietResponse.From(diet);
     }
 
@@ -145,6 +151,7 @@ public class DietService : IDietService
 
         diete.ChangeDietStatus(DietStatus.Archived);
         await _dietRepository.UpdateAsync(diete);
+        await _unitOfWork.SaveChangesAsync();
 
         return DietResponse.From(diete);
 

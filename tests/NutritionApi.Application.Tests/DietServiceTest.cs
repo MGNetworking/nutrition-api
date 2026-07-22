@@ -3,6 +3,7 @@ namespace NutritionApi.Application.Tests;
 using Moq;
 using NutritionApi.Application.DTOS.Diets;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
@@ -16,16 +17,20 @@ public class DietServiceTest
     private readonly Mock<IUserRepository> _userRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IWeightEntryRepository> _weightEntryRepositoryMock = new(MockBehavior.Strict);
     private readonly SubscriptionGuard _subscriptionGuard = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new(MockBehavior.Strict);
     private readonly DietService _dietService;
 
     public DietServiceTest()
     {
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
+
         _dietService = new DietService(
             _dietRepositoryMock.Object,
             _dietPlanRepositoryMock.Object,
             _userRepositoryMock.Object,
             _weightEntryRepositoryMock.Object,
-            _subscriptionGuard);
+            _subscriptionGuard,
+            _unitOfWorkMock.Object);
     }
 
     private static (User user, DietPlan plan) BuildFixtures(string keycloakId = "keycloak-123")
@@ -71,6 +76,7 @@ public class DietServiceTest
 
         Assert.IsType<DietResponse>(result);
         _dietRepositoryMock.Verify(r => r.AddAsync(It.IsAny<Diet>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -135,6 +141,7 @@ public class DietServiceTest
 
         Assert.IsType<DietResponse>(result);
         _dietRepositoryMock.Verify(r => r.UpdateAsync(diet), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Domain.Entity;
@@ -16,15 +17,18 @@ public class DietPlansService : IDietPlanService
     private readonly IDietPlanRepository _dietPlanRepository;
     private readonly IUserRepository _userRepository;
     private readonly SubscriptionGuard _subscriptionGuard;
+    private readonly IUnitOfWork _unitOfWork;
 
     public DietPlansService(
         IDietPlanRepository dietPlanRepository,
         IUserRepository userRepository,
-        SubscriptionGuard subscriptionGuard)
+        SubscriptionGuard subscriptionGuard,
+        IUnitOfWork unitOfWork)
     {
         _dietPlanRepository = dietPlanRepository;
         _userRepository = userRepository;
         _subscriptionGuard = subscriptionGuard;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>Crée un DietPlan personnel pour l'utilisateur après vérification de la limite de plans selon le tier.</summary>
@@ -57,6 +61,8 @@ public class DietPlansService : IDietPlanService
             macro);
 
         await _dietPlanRepository.AddAsync(planDiet);
+        await _unitOfWork.SaveChangesAsync();
+
         return DietPlanResponse.From(planDiet);
     }
 
@@ -115,6 +121,8 @@ public class DietPlansService : IDietPlanService
         plan.AdjustMacros(macro);
 
         await _dietPlanRepository.UpdateAsync(plan);
+        await _unitOfWork.SaveChangesAsync();
+
         return DietPlanResponse.From(plan);
     }
 
@@ -133,5 +141,6 @@ public class DietPlansService : IDietPlanService
             throw new ForbiddenException("You do not have access to this DietPlan.");
 
         await _dietPlanRepository.DeleteAsync(planId);
+        await _unitOfWork.SaveChangesAsync();
     }
 }

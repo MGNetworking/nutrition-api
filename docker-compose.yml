@@ -1,7 +1,7 @@
-# Environnement de développement local et tests d'intégration (NTR-81)
+# Environnement de développement local et tests d'intégration
 #
 # L'API tourne sur le host (dotnet run) et se connecte à ces services via localhost:PORT.
-# Versions figées — à maintenir alignées avec les manifests K3s de production (NTR-124).
+# Versions figées — à maintenir alignées avec les manifests K3s de production.
 #
 # Séquence de démarrage :
 #   docker compose up -d
@@ -52,6 +52,13 @@ services:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
       KC_HEALTH_ENABLED: "true"
+      # Fige l'issuer des jetons sur l'URL vue depuis le host. Sans cela, Keycloak
+      # le déduit de l'en-tête Host : un jeton obtenu depuis le host porterait
+      # localhost:8778 alors que l'API conteneurisée attendrait keycloak:8080.
+      KC_HOSTNAME: http://localhost:8778
+      # Les appels internes (récupération des clés de signature par l'API dans le
+      # réseau Docker) continuent d'utiliser le nom de service.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     ports:
       - "8778:8080"
     volumes:
@@ -66,6 +73,46 @@ services:
       timeout: 5s
       retries: 30
       start_period: 20s
+
+  # ── Profil « full » : API conteneurisée ──────────────────────────────────────
+  # Non démarrés par défaut. `docker compose up -d` ne lance que les 3 services
+  # ci-dessus (mode dev, API sur le host).
+  #   docker compose --profile full up -d   → ajoute les services suivants
+
+  migrations:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: Dockerfile.migrations
+    container_name: nutrition-migrations
+    environment:
+      # Lue en priorité par DesignTimeDbContextFactory
+      NUTRITION_DB_CONNECTION: "Host=postgres;Port=5432;Database=nutrition_dev;Username=postgres;Password=postgres"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: src/NutritionApi.Api/Dockerfile
+    container_name: nutrition-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_HTTP_PORTS: "8080"
+    ports:
+      # 5100 côté host pour ne pas entrer en conflit avec l'API lancée en dotnet run (5099)
+      - "5100:8080"
+    depends_on:
+      # L'API ne démarre qu'une fois les migrations terminées avec succès
+      migrations:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
 
 volumes:
   postgres-data:
