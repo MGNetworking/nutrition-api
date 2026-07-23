@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -6,6 +7,7 @@ using NutritionApi.Api.Extensions;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Application;
 using NutritionApi.Infrastructure;
+using NutritionApi.Infrastructure.Jobs;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -112,6 +114,15 @@ app.UseHttpsRedirection();
 app.UseMiddleware<ExceptionMiddleware>();      // Intercepte toutes les exceptions non gérées
 app.UseAuthentication();                      // Valide le JWT Bearer
 app.UseAuthorization();                       // Applique les policies et rôles
+
+// Dashboard Hangfire — restreint au rôle admin par HangfireAdminAuthorizationFilter.
+// Placé après UseAuthorization (le filtre lit User) et avant UserResolutionMiddleware
+// (le dashboard n'a pas besoin de la résolution keycloakId → User interne).
+app.MapHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = [new HangfireAdminAuthorizationFilter()]
+});
+
 app.UseMiddleware<UserResolutionMiddleware>(); // Résout keycloakId → User.Id interne
 app.MapControllers();
 

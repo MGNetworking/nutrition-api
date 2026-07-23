@@ -1,5 +1,7 @@
 namespace NutritionApi.Infrastructure;
 
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +9,7 @@ using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Infrastructure.Caching;
+using NutritionApi.Infrastructure.Jobs;
 using NutritionApi.Infrastructure.Persistence;
 using NutritionApi.Infrastructure.Persistence.Repositories;
 using StackExchange.Redis;
@@ -49,6 +52,20 @@ public static class InfrastructureExtensions
         });
 
         services.AddScoped<IFoodCacheService, RedisFoodCacheService>();
+
+        // ── Hangfire ──────────────────────────────────────────────────────────
+        // Jobs planifiés persistés dans PostgreSQL (schéma dédié, tables créées au
+        // démarrage). Le serveur d'exécution tourne dans le process de l'API.
+        services.AddHangfire(config => config
+            .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
+
+        services.AddHangfireServer();
+
+        // Supervision des jobs planifiés — lit l'état des recurring jobs dans hangfire.hash
+        services.AddScoped<IJobMonitoringService, JobMonitoringService>();
 
         return services;
     }
