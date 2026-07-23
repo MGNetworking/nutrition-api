@@ -31,6 +31,14 @@ public sealed class FoodItemRepository : IFoodItemRepository
     public async Task<FoodItem?> GetByOffIdAsync(string offId)
         => await _context.FoodItems.FirstOrDefaultAsync(f => f.OffId == offId);
 
+    /// <summary>Retourne les aliments dont l'identifiant Open Food Facts figure dans la liste fournie.</summary>
+    /// <param name="offIds">Liste des identifiants Open Food Facts.</param>
+    /// <returns>Liste des aliments trouvés — peut contenir moins d'éléments que la liste fournie.</returns>
+    public async Task<List<FoodItem>> GetByOffIdsAsync(List<string> offIds)
+        => await _context.FoodItems
+            .Where(f => offIds.Contains(f.OffId))
+            .ToListAsync();
+
     /// <summary>Recherche les aliments dont le nom contient le mot-clé, sans distinction de casse.</summary>
     /// <param name="keyword">Mot-clé de recherche.</param>
     /// <param name="limit">Nombre maximum de résultats.</param>
@@ -46,6 +54,11 @@ public sealed class FoodItemRepository : IFoodItemRepository
     /// <param name="foodItem">Aliment à ajouter.</param>
     public async Task AddAsync(FoodItem foodItem)
         => await _context.FoodItems.AddAsync(foodItem);
+
+    /// <summary>Ajoute plusieurs aliments au contexte — la persistance est déclenchée par l'unité de travail.</summary>
+    /// <param name="foodItems">Aliments à ajouter.</param>
+    public async Task AddRangeAsync(List<FoodItem> foodItems)
+        => await _context.FoodItems.AddRangeAsync(foodItems);
 
     /// <summary>Marque un aliment comme modifié — la persistance est déclenchée par l'unité de travail.</summary>
     /// <param name="foodItem">Aliment avec les données modifiées.</param>

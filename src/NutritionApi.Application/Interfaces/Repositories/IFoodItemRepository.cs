@@ -20,6 +20,11 @@ public interface IFoodItemRepository
     /// <returns>L'aliment correspondant, ou <c>null</c> s'il n'existe pas.</returns>
     Task<FoodItem?> GetByOffIdAsync(string offId);
 
+    /// <summary>Retourne les aliments correspondant à une liste d'identifiants Open Food Facts.</summary>
+    /// <param name="offIds">Liste des identifiants Open Food Facts.</param>
+    /// <returns>Liste des aliments trouvés — peut contenir moins d'éléments que la liste fournie.</returns>
+    Task<List<FoodItem>> GetByOffIdsAsync(List<string> offIds);
+
     /// <summary>Recherche des aliments par mot-clé dans le catalogue.</summary>
     /// <param name="keyword">Mot-clé de recherche.</param>
     /// <param name="limit">Nombre maximum de résultats.</param>
@@ -29,6 +34,10 @@ public interface IFoodItemRepository
     /// <summary>Persiste un nouvel aliment.</summary>
     /// <param name="foodItem">Aliment à ajouter.</param>
     Task AddAsync(FoodItem foodItem);
+
+    /// <summary>Ajoute plusieurs aliments en une seule opération.</summary>
+    /// <param name="foodItems">Aliments à ajouter.</param>
+    Task AddRangeAsync(List<FoodItem> foodItems);
 
     /// <summary>Met à jour un aliment existant.</summary>
     /// <param name="foodItem">Aliment avec les données modifiées.</param>

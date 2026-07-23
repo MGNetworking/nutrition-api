@@ -67,6 +67,10 @@ public static class InfrastructureExtensions
         // Supervision des jobs planifiés — lit l'état des recurring jobs dans hangfire.hash
         services.AddScoped<IJobMonitoringService, JobMonitoringService>();
 
+        // Import Open Food Facts — téléchargement du dump + alimentation du catalogue par lots
+        services.AddHttpClient<IOffDumpReader, OffDumpReader>();
+        services.AddScoped<IOffImportJob, OffImportJob>();
+
         return services;
     }
 }

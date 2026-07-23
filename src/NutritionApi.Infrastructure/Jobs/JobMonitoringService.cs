@@ -68,11 +68,18 @@ public sealed class JobMonitoringService : IJobMonitoringService
         return jobs;
     }
 
-    /// <summary>Parse un horodatage Hangfire (ISO 8601 UTC) ; retourne <c>null</c> si absent ou illisible.</summary>
+    /// <summary>
+    /// Parse un horodatage Hangfire ; retourne <c>null</c> si absent ou illisible.
+    /// Hangfire.PostgreSql stocke les dates des recurring jobs en millisecondes Unix
+    /// (ex : <c>1784862000000</c>) ; un repli ISO 8601 est conservé par prudence.
+    /// </summary>
     private static DateTime? ParseHangfireDate(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return null;
+
+        if (long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var unixMilliseconds))
+            return DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds).UtcDateTime;
 
         return DateTime.TryParse(
             value,
