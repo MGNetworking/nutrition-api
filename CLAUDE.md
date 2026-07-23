@@ -82,9 +82,8 @@ Racine de la documentation : `../docs/pages/backend/`
 
 | Fichier | Contenu |
 |---|---|
-| `livrable/checklist-implementation.md` | Tous les items par couche (Domain / Application / Infrastructure / API) |
-| `livrable/specs-frontend.md` | 8 écrans + contrats API par écran |
-| `features/` | Un fichier par feature (diet.md, repas.md, aliments.md…) |
+| `features/utilisateur/` | Fonctionnalités visibles — une fiche par fonctionnalité (diet, repas, aliments…) |
+| `features/interne/` | Fonctionnalités de fonctionnement applicatif (import OFF, purge RGPD, moteur de calcul…) |
 
 ### Annexes
 
@@ -92,7 +91,7 @@ Racine de la documentation : `../docs/pages/backend/`
 |---|---|
 | `annexes/Diagramme-classes.md` | Diagramme Mermaid du modèle domaine |
 | `annexes/concept-moteur-architecture.md` | Concept "Moteur (Engine)" — patterns Strategy + Factory |
-| `features/nutrition-calculator.md` | Contrat du moteur de calcul nutritionnel |
+| `features/interne/nutrition-calculator.md` | Contrat du moteur de calcul nutritionnel |
 
 ---
 

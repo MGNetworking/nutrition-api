@@ -6,7 +6,7 @@ namespace NutritionApi.Api.Tests.Integration;
 //   - Helper de génération de JWT signé avec la clé de test
 //   - Méthodes SeedAsync() pour pré-charger les fixtures
 //
-// Référence : docs/pages/backend/features/tests-integration.md — section DietPlansController
+// Référence : docs/pages/backend/features/interne/tests-integration.md — section DietPlansController
 
 public class DietPlansIntegrationTest
 {
