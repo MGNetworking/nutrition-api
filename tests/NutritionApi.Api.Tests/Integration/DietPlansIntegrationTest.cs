@@ -61,28 +61,28 @@ public class DietPlansIntegrationTest
     public async Task Delete_WhenNotFound_Returns404() { }
 
     // -------------------------------------------------------------------------
-    // POST /api/v1/diet-plans/{id}/launch
+    // POST /api/v1/diets/{id}/launch  — porté par DietsController, d'où les IDs IT-DT-*
     // -------------------------------------------------------------------------
 
-    [Fact(Skip = "integration — IT-DP-09 : plan valide, pas de Diet active → 201 Diet créée")]
+    [Fact(Skip = "integration — IT-DT-09 : plan valide, pas de Diet active → 201 Diet créée")]
     public async Task Launch_WhenNoDietActive_Returns201() { }
 
-    [Fact(Skip = "integration — IT-DP-10 : Diet déjà active → 409 (règle métier)")]
+    [Fact(Skip = "integration — IT-DT-10 : Diet déjà active → 409 (règle métier)")]
     public async Task Launch_WhenDietAlreadyActive_Returns409() { }
 
-    [Fact(Skip = "integration — IT-DP-11 : plan inexistant → 404")]
+    [Fact(Skip = "integration — IT-DT-11 : plan inexistant → 404")]
     public async Task Launch_WhenPlanNotFound_Returns404() { }
 
-    [Fact(Skip = "integration — IT-DP-12 : données du plan insuffisantes → 422")]
+    [Fact(Skip = "integration — IT-DT-12 : données du plan insuffisantes → 422")]
     public async Task Launch_WhenPlanInvalid_Returns422() { }
 
     // -------------------------------------------------------------------------
     // GET /api/v1/diet-plans/templates
     // -------------------------------------------------------------------------
 
-    [Fact(Skip = "integration — IT-DP-13 : user Free → 403")]
+    [Fact(Skip = "integration — IT-DP-09 : user Free → 403")]
     public async Task GetTemplates_WhenFreeUser_Returns403() { }
 
-    [Fact(Skip = "integration — IT-DP-14 : user Pro/Business → 200 avec templates")]
+    [Fact(Skip = "integration — IT-DP-10 : user Pro/Business → 200 avec templates")]
     public async Task GetTemplates_WhenProUser_Returns200() { }
 }
