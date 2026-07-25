@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NutritionApi.Application.Interfaces;
+using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Domain.Entity;
 
@@ -15,22 +16,26 @@ public sealed class OffImportJob : IOffImportJob
 {
     private readonly IOffDumpReader _reader;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IFoodCacheService _foodCache;
     private readonly ILogger<OffImportJob> _logger;
     private readonly int _batchSize;
 
     /// <summary>Construit le job d'import.</summary>
     /// <param name="reader">Lecteur du dump Open Food Facts.</param>
     /// <param name="scopeFactory">Fabrique de scopes DI — un DbContext neuf par lot.</param>
+    /// <param name="foodCache">Cache des recherches, invalidé en fin d'import.</param>
     /// <param name="configuration">Configuration — <c>OpenFoodFacts:BatchSize</c> (défaut 1000).</param>
     /// <param name="logger">Journalisation du bilan d'import.</param>
     public OffImportJob(
         IOffDumpReader reader,
         IServiceScopeFactory scopeFactory,
+        IFoodCacheService foodCache,
         IConfiguration configuration,
         ILogger<OffImportJob> logger)
     {
         _reader = reader;
         _scopeFactory = scopeFactory;
+        _foodCache = foodCache;
         _logger = logger;
         _batchSize = configuration.GetValue("OpenFoodFacts:BatchSize", 1000);
     }
@@ -68,6 +73,14 @@ public sealed class OffImportJob : IOffImportJob
         _logger.LogInformation(
             "Import Open Food Facts terminé : {Imported} produits importés, {Skipped} ignorés.",
             imported, skipped);
+
+        // Le catalogue a changé : les recherches mémorisées portent sur des données périmées.
+        // Aucun produit importé = catalogue inchangé, inutile de vider le cache.
+        if (imported > 0)
+        {
+            await _foodCache.InvalidateAllSearchesAsync();
+            _logger.LogInformation("Cache des recherches d'aliments invalidé après import.");
+        }
     }
 
     private async Task<int> PersistBatchAsync(List<OffProduct> batch)
