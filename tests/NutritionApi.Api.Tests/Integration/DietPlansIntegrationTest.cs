@@ -2,11 +2,11 @@ namespace NutritionApi.Api.Tests.Integration;
 
 // Prérequis avant d'implémenter :
 //   - WebApplicationFactory<Program> + appsettings.Testing.json
-//   - Testcontainers.PostgreSql (DB isolée par session)
+//   - docker-compose (PostgreSQL, Redis, Keycloak réels — décision du 2026-07-21)
 //   - Helper de génération de JWT signé avec la clé de test
 //   - Méthodes SeedAsync() pour pré-charger les fixtures
 //
-// Référence : docs/pages/backend/features/interne/tests-integration.md — section DietPlansController
+// Référence : docs/pages/backend/features/interne/recensement-des-tests.md — section DietPlansController
 
 public class DietPlansIntegrationTest
 {

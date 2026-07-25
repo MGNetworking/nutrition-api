@@ -447,6 +447,15 @@ _dietPlanRepositoryMock.VerifyAll();
 
 ## 11. Testcontainers — Tests d'intégration
 
+> ⚠️ **Non retenu par ce projet.** Les tests d'intégration de niveau 3 s'appuient sur le
+> `docker-compose.yml` du projet (PostgreSQL, Redis, Keycloak), réutilisé en CI — décision
+> d'architecture du 2026-07-21. Testcontainers a été écarté car des conteneurs isolés ne
+> valident ni la configuration Docker, ni le réseau entre composants, ni la chaîne JWT réelle.
+> Voir `docs/pages/backend/features/interne/niveaux-de-tests.md`.
+>
+> Cette section est conservée à titre de **référence xUnit générale**, pas comme la marche à
+> suivre du projet.
+
 Testcontainers lance un vrai conteneur Docker pour les tests. Idéal pour tester les repositories EF Core contre PostgreSQL.
 
 ```csharp
