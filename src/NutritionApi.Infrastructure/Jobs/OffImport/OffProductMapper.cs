@@ -1,4 +1,4 @@
-namespace NutritionApi.Infrastructure.Jobs;
+namespace NutritionApi.Infrastructure.Jobs.OffImport;
 
 using System.Text.Json;
 using System.Text.Json.Serialization;

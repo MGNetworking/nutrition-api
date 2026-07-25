@@ -8,7 +8,8 @@ using NutritionApi.Api.Middleware;
 using NutritionApi.Application;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Infrastructure;
-using NutritionApi.Infrastructure.Jobs;
+using NutritionApi.Infrastructure.Jobs.OffImport;
+using NutritionApi.Infrastructure.Scheduling;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);

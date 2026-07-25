@@ -1,7 +1,7 @@
-namespace NutritionApi.Infrastructure.Tests.Jobs;
+namespace NutritionApi.Infrastructure.Tests.Jobs.OffImport;
 
 using NutritionApi.Domain.Enums;
-using NutritionApi.Infrastructure.Jobs;
+using NutritionApi.Infrastructure.Jobs.OffImport;
 
 public class OffProductMapperTest
 {

@@ -1,4 +1,4 @@
-namespace NutritionApi.Infrastructure.Jobs;
+namespace NutritionApi.Infrastructure.Jobs.OffImport;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

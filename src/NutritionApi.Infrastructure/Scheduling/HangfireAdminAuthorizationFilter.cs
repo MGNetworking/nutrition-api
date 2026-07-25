@@ -1,4 +1,4 @@
-namespace NutritionApi.Infrastructure.Jobs;
+namespace NutritionApi.Infrastructure.Scheduling;
 
 using Hangfire.Dashboard;
 

@@ -1,4 +1,4 @@
-namespace NutritionApi.Infrastructure.Jobs;
+namespace NutritionApi.Infrastructure.Scheduling;
 
 using System.Globalization;
 using Microsoft.Extensions.Configuration;

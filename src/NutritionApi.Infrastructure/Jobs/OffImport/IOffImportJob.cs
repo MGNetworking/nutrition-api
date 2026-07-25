@@ -1,4 +1,4 @@
-namespace NutritionApi.Infrastructure.Jobs;
+namespace NutritionApi.Infrastructure.Jobs.OffImport;
 
 /// <summary>Job d'import du dump Open Food Facts vers le catalogue local d'aliments.</summary>
 public interface IOffImportJob

@@ -1,4 +1,4 @@
-namespace NutritionApi.Infrastructure.Tests.Jobs;
+namespace NutritionApi.Infrastructure.Tests.Scheduling;
 
 // Tests d'intégration — nécessitent une base PostgreSQL réelle avec le schéma Hangfire.
 // JobMonitoringService lit directement la table hangfire.hash (recurring-job:*), donc il
