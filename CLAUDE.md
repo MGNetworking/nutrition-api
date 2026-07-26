@@ -49,6 +49,7 @@ Arbitrages actés — ne pas les remettre en cause sans demande explicite de Max
 |---|---|---|
 | Tests d'intégration externe (niveau 3) | **docker-compose** avec les 3 services (PostgreSQL, Redis, **Keycloak**) — réutilisé en CI. Testcontainers écarté. | 2026-07-21 |
 | Déploiement production | **VPS** (le *où*) + **K3s** (l'orchestrateur) — les manifests restent portables vers un cloud managé. | 2026-07-21 |
+| Organisation de la documentation | Classement **par système** : `systemes/`, `briques/`, `qualite/`, `reference/`. `annexes/` et `features/` supprimés, `design/` inchangé. Le public (utilisateur/interne) ne classe plus. Voir `.claude/rules/documentation-projet.md`. | 2026-07-26 |
 
 **Trois environnements distincts**, sans obligation d'alignement entre eux :
 

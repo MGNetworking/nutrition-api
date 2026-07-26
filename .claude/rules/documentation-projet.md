@@ -1,7 +1,54 @@
 # Règle — Documentation projet (Markdown)
 
-> Cette règle concerne la **documentation du projet** (features, workflows, annexes).
+> Cette règle concerne la **documentation du projet** (systèmes, workflows, briques).
 > Pour la documentation XML du code C#, voir `xml-documentation.md`.
+
+---
+
+## Organisation des dossiers — un seul axe : le système
+
+**Décidé le 2026-07-26.** Le classement se fait **par système**, jamais par public ni par nature de
+document. Deux axes concurrents dispersent la recherche : c'est ce qui rendait `annexes/`
+inutilisable — un nom qui décrit un reste, pas un contenu.
+
+```
+backend/
+├── design/          ← contrats d'architecture (ne bouge pas)
+├── systemes/        ← un dossier par système : tout ce qui lui appartient, et rien d'autre
+├── briques/         ← les technologies tierces
+├── qualite/         ← la démarche de vérification
+└── reference/       ← vues transverses et concepts
+```
+
+### Où placer une nouvelle page — deux questions, dans cet ordre
+
+1. **Est-ce une technologie tierce ?** (Redis, Hangfire, Keycloak, Stripe…) → `briques/`, **toujours**,
+   même si un seul système la consomme aujourd'hui. Le second usage arrive avant qu'on s'en souvienne,
+   et déplacer une page publiée coûte une redirection.
+2. **Sinon** → dans le dossier de son système. Sauf si elle sert **plusieurs** systèmes : alors
+   `reference/`.
+
+Un dossier de système doit pouvoir se lire ainsi : *« tout ce qui est ici appartient à X, et rien
+d'autre »* — le même test que pour l'arborescence du code (`conventions.md`).
+
+### Le public ne classe pas
+
+Une fiche destinée à l'utilisateur et une fiche interne du **même** système vivent dans le même
+dossier. La distinction reste portée par le champ `**Type :**` de la fiche et par la `nav:`, jamais
+par l'arborescence.
+
+### Nommage
+
+- `index.md` — la porte d'entrée du système (niveau 1 principal)
+- `workflow-<sujet>.md` — un assemblage (niveau 2)
+- nom explicite pour le reste (`cache-recherche.md`, `source-open-food-facts.md`)
+- Dans `briques/` : le nom de la technologie seul (`redis.md`), sans préfixe
+
+### Déplacer une page publiée
+
+Le site est en ligne et des URLs sont citées dans les commentaires Jira. **Toute page déplacée
+laisse une redirection** dans `plugins: redirects: redirect_maps` de `mkdocs.yml`. Ne jamais
+supprimer une entrée de redirection existante.
 
 ---
 
@@ -17,9 +64,9 @@ C'est le signe qu'il manque le document d'assemblage, pas que les documents exis
 
 | Niveau | Répond à | Emplacement |
 |---|---|---|
-| **1. Feature** | *quoi* et *pourquoi* — le besoin, le périmètre | `features/utilisateur/` ou `features/interne/` |
-| **2. Workflow** | *comment ça marche*, de bout en bout | `annexes/workflow-<sujet>.md` |
-| **3. Référence** | une brique isolée (un outil, une source de données) | `annexes/infrastructure-<brique>.md` |
+| **1. Feature** | *quoi* et *pourquoi* — le besoin, le périmètre | `systemes/<systeme>/index.md` |
+| **2. Workflow** | *comment ça marche*, de bout en bout | `systemes/<systeme>/workflow-<sujet>.md` |
+| **3. Référence** | une brique isolée (un outil, une source de données) | `briques/<techno>.md`, ou `systemes/<systeme>/<brique>.md` si elle n'appartient qu'à lui |
 
 **Règles de rattachement :**
 
