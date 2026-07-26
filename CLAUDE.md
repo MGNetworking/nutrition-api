@@ -50,6 +50,14 @@ Arbitrages actés — ne pas les remettre en cause sans demande explicite de Max
 | Tests d'intégration externe (niveau 3) | **docker-compose** avec les 3 services (PostgreSQL, Redis, **Keycloak**) — réutilisé en CI. Testcontainers écarté. | 2026-07-21 |
 | Déploiement production | **VPS** (le *où*) + **K3s** (l'orchestrateur) — les manifests restent portables vers un cloud managé. | 2026-07-21 |
 | Organisation de la documentation | Classement **par système** : `systemes/`, `briques/`, `qualite/`, `reference/`. `annexes/` et `features/` supprimés, `design/` inchangé. Le public (utilisateur/interne) ne classe plus. Voir `.claude/rules/documentation-projet.md`. | 2026-07-26 |
+| Postman / Newman en CI | **Écarté** comme moteur de tests : incapable de vérifier l'état en base, l'expiration du TTL Redis, ou de produire de la couverture. La collection Postman reste un outil de développement. | 2026-07-22 |
+
+### Pas de fichier de passation de session
+
+Les passations (`.claude/sessions/handoff-*.md`) ne sont **plus utilisées** — supprimées le 2026-07-26.
+Elles se périmaient en quelques jours tout en ayant l'apparence d'une source de vérité. La reprise de
+contexte s'appuie sur : ce fichier (règles et décisions), `memory/` (contexte projet), Jira
+(avancement), la documentation publiée (fonctionnement).
 
 **Trois environnements distincts**, sans obligation d'alignement entre eux :
 
