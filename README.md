@@ -27,9 +27,6 @@ API SaaS de gestion nutritionnelle — backend ASP.NET Core 10, architecture DDD
 - [Tests automatisés](#tests-automatisés)
 - [Structure du dépôt](#structure-du-dépôt)
 - [Documentation](#documentation)
-- [Contribution](#contribution)
-- [Version](#version)
-- [Licence](#licence)
 
 ---
 
@@ -55,6 +52,14 @@ partir d'un catalogue d'aliments, et de suivre sa progression.
 Trois paliers d'abonnement — **Free**, **Pro**, **Business** — déterminent les quotas et l'accès aux
 fonctionnalités.
 
+**Limites connues à ce stade**
+
+| Limite | Détail |
+|---|---|
+| Purge RGPD | Le service et les endpoints existent ; le job planifié qui supprime définitivement les comptes à l'expiration de la grace period n'est pas implémenté. |
+| Envoi d'e-mails | `IEmailService` est déclarée côté Application, sans implémentation Infrastructure ni enregistrement dans le conteneur. |
+| Administration Keycloak | `IKeycloakAdminService` est dans le même état. |
+
 ---
 
 ## Stack technique
@@ -66,9 +71,9 @@ fonctionnalités.
 | ORM | Entity Framework Core | 10 |
 | Cache | Redis | 7 |
 | Authentification | Keycloak (OIDC / JWT) | 26 |
-| Tâches planifiées | Hangfire | — |
-| Documentation d'API | Swagger / OpenAPI | — |
-| Tests | xUnit, Moq | — |
+| Tâches planifiées | Hangfire | 1.8 |
+| Documentation d'API | Swagger / OpenAPI (Swashbuckle) | 7.2 |
+| Tests | xUnit, Moq, coverlet | — |
 
 ---
 
@@ -226,25 +231,35 @@ curl -X POST "http://localhost:8778/realms/nutrition/protocol/openid-connect/tok
 La stratégie de test s'organise en quatre niveaux, chacun répondant à une question différente.
 Un même comportement n'est jamais vérifié à deux niveaux.
 
-| Niveau | Question | Outil | Docker |
-|---|---|---|---|
-| **1 — Unitaires** | Ma logique métier est-elle correcte ? | xUnit + Moq | Non |
-| **2 — Intégration interne** | Mes composants fonctionnent-ils ensemble ? | WebApplicationFactory | Non |
-| **3 — Intégration externe** | Mon application dialogue-t-elle avec ses dépendances réelles ? | WebApplicationFactory + docker-compose | Oui |
-| **4 — Smoke tests** | Le système déployé fonctionne-t-il ? | Client HTTP | Cluster |
+| Niveau | Question | Outil | Docker | État |
+|---|---|---|---|---|
+| **1 — Unitaires** | Ma logique métier est-elle correcte ? | xUnit + Moq | Non | ✅ en place |
+| **2 — Intégration interne** | Mes composants fonctionnent-ils ensemble ? | WebApplicationFactory | Non | ❌ non implémenté |
+| **3 — Intégration externe** | Mon application dialogue-t-elle avec ses dépendances réelles ? | WebApplicationFactory + docker-compose | Oui | ❌ non implémenté |
+| **4 — Smoke tests** | Le système déployé fonctionne-t-il ? | Client HTTP | Cluster | ❌ non implémenté |
+
+> **Seul le niveau 1 s'exécute aujourd'hui.** Les niveaux 2 et 3 existent sous forme de méthodes
+> vides marquées `[Fact(Skip = …)]`, porteuses des identifiants du recensement des tests
+> (`IT-DP-*`, `IT-DT-*`, `IT-JOB-*`, `IT-AUTH-*`). Elles décrivent le comportement attendu sans le
+> vérifier. Le socle manquant est listé en tête de chaque fichier de stubs :
+> `WebApplicationFactory<Program>`, un `appsettings.Testing.json`, un helper de génération de JWT
+> signé, et des méthodes de chargement de fixtures.
 
 **Niveau 1 — Unitaires.** Entités du domaine, invariants, services applicatifs avec repositories
-mockés. Rapides, sans dépendance externe. C'est le niveau le plus fourni.
+mockés. Rapides, sans dépendance externe. C'est le niveau le plus fourni, et le seul couvert par la
+CI.
 
-**Niveau 2 — Intégration interne.** Routing, sérialisation, middlewares, policies d'autorisation.
-L'application est montée en mémoire, les dépendances externes remplacées par des faux.
+**Niveau 2 — Intégration interne.** *Prévu.* Routing, sérialisation, middlewares, policies
+d'autorisation. L'application sera montée en mémoire, les dépendances externes remplacées par des
+faux.
 
-**Niveau 3 — Intégration externe.** Les trois services du `docker-compose.yml` sont réels : on
-valide les requêtes EF Core contre PostgreSQL, le TTL du cache Redis, et la chaîne JWT complète
-(issuer, audience, signature) contre Keycloak.
+**Niveau 3 — Intégration externe.** *Prévu.* Les trois services du `docker-compose.yml` seront
+réels : validation des requêtes EF Core contre PostgreSQL, du TTL du cache Redis, et de la chaîne
+JWT complète (issuer, audience, signature) contre Keycloak.
 
-**Niveau 4 — Smoke tests.** Exécutés après déploiement sur l'environnement réel : l'application
-répond, les connexions sont actives, la configuration est cohérente. Pas de scénario métier.
+**Niveau 4 — Smoke tests.** *Prévu.* À exécuter après déploiement sur l'environnement réel :
+l'application répond, les connexions sont actives, la configuration est cohérente. Pas de scénario
+métier.
 
 ### Commandes
 
@@ -263,7 +278,11 @@ reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"covera
 
 Le rapport est généré dans `coverage/report/index.html`.
 
-**Seuils de couverture attendus par couche**
+**Seuils de couverture par couche**
+
+Déclarés dans `tests/coverage.runsettings`, en ligne **et** en branche. Le workflow
+`.github/workflows/ci-unit.yml` lance `dotnet test` avec ce fichier de réglages : les seuils sont
+donc contrôlés à chaque pull request vers `dev`.
 
 | Couche | Seuil |
 |---|---|
@@ -271,6 +290,12 @@ Le rapport est généré dans `coverage/report/index.html`.
 | Application | 80 % |
 | Infrastructure | 70 % |
 | Api | 70 % |
+
+Sont exclus du calcul : les DTOs, `Program.cs`, `DependencyInjection.cs`, les projets de tests et
+tout membre marqué `[ExcludeFromCodeCoverage]`.
+
+> Le badge **Coverage** en tête de ce fichier concerne l'affichage public du taux (Codecov ou
+> équivalent), qui reste à brancher — voir NTR-120. Le contrôle des seuils, lui, est bien actif.
 
 ---
 
@@ -281,14 +306,22 @@ nutrition-api/
 ├── src/
 │   ├── NutritionApi.Domain/           Entités, value objects, enums — aucune dépendance
 │   ├── NutritionApi.Application/      Services, DTOs, interfaces
-│   ├── NutritionApi.Infrastructure/   EF Core, migrations, repositories
+│   ├── NutritionApi.Infrastructure/   EF Core, migrations, repositories, cache, jobs
 │   └── NutritionApi.Api/              Controllers, middlewares, Program.cs
-├── tests/                             Un projet de tests par couche
-├── scripts/                           Scripts d'environnement (dev-up, dev-down, docker-up…)
+├── tests/                             Un projet de tests par couche + coverage.runsettings
+├── scripts/                           Scripts d'environnement (dev-up, dev-down, dev-reset,
+│                                      docker-up, lib.sh)
 ├── keycloak/                          realm-export.json — realm, client, rôles, comptes de test
 ├── postman/                           Collection et environnements Postman
+├── .github/workflows/                 CI — tests unitaires, release, déploiement, Release Please
+├── .claude/                           Règles et skills Claude Code
+├── nutrition-api.slnx                 Solution
 ├── docker-compose.yml                 PostgreSQL, Redis, Keycloak (+ API sous profil « full »)
 ├── Dockerfile.migrations              Conteneur one-shot d'application des migrations
+├── release-please-config.json         Versionnage et CHANGELOG automatisés
+├── version.txt                        Version courante, tenue par Release Please
+├── CLAUDE.md                          Contexte projet pour Claude Code
+├── LICENSE                            FSL-1.1-ALv2
 └── seed-dev.sql                       Données de test — développement uniquement
 ```
 
@@ -303,50 +336,3 @@ nutrition-api/
 | [CONFIGURATION.md](CONFIGURATION.md) | Fichiers de configuration, variables d'environnement, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Historique des versions |
 | [LICENSE](LICENSE) | Conditions d'utilisation — FSL-1.1-ALv2 |
-
----
-
-## Contribution
-
-Le projet suit un workflow `feature/* → dev → prod → main` :
-
-- **`feature/*`** — développement isolé d'une feature ou d'un epic
-- **`dev`** — intégration, alimentée par squash PR
-- **`prod`** — production, déclenche le déploiement
-- **`main`** — releases stables taguées `vX.Y.Z`
-
-Format de commit obligatoire :
-
-```
-feat(api): ajouter la recherche d'aliments #NTR-42
-```
-
-Workflow complet, règles de protection de branches et stratégie CI : [CONTRIBUTING.md](CONTRIBUTING.md).
-
----
-
-## Version
-
-Voir [CHANGELOG.md](CHANGELOG.md) — généré automatiquement par
-[Release Please](https://github.com/googleapis/release-please) à partir des commits conventionnels.
-
----
-
-## Licence
-
-Ce projet est distribué sous **Functional Source License 1.1, ALv2 Future License**
-(`FSL-1.1-ALv2`) — texte complet dans [LICENSE](LICENSE).
-
-Ce n'est pas une licence open source au sens de l'OSI, mais une licence *source-available* :
-
-| | |
-|---|---|
-| **Autorisé** | Utiliser, copier, modifier, créer des œuvres dérivées et redistribuer le code pour tout usage non concurrent — usage interne, enseignement non commercial, recherche non commerciale, prestation de services fournie à un licencié. |
-| **Interdit** | L'usage concurrent : proposer le code dans un produit ou service commercial qui se substitue à Nutrition API, se substitue à un autre produit que nous en tirons, ou offre une fonctionnalité identique ou substantiellement similaire. |
-| **Obligation** | Toute redistribution inclut ces conditions (ou un lien vers elles) et conserve les mentions de copyright. |
-
-**La restriction est temporaire.** Chaque version bascule automatiquement sous
-[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) au deuxième anniversaire de sa mise
-à disposition — le droit futur est accordé de façon irrévocable dès la publication.
-
-Copyright 2026 Ghalem Maxime.
