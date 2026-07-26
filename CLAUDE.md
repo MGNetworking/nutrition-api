@@ -29,6 +29,14 @@ Une question ("pourquoi X ?") ou une phrase de reprise ("reprends sur NTR-XX") n
 
 Maxime code lui-même. Ne proposer que ce qui est demandé. Ne pas nettoyer, refactorer, ajouter de gestion d'erreur, ni créer de fichiers au-delà du strict périmètre demandé.
 
+### Annoncer tous les fichiers touchés — avant d'écrire
+
+Avant d'écrire quoi que ce soit, donner la **liste complète** des fichiers créés ou modifiés, et attendre l'accord.
+
+Cela inclut les fichiers **collatéraux** qu'une règle du projet impose de mettre à jour : la `nav:` de `mkdocs.yml`, un `index.md`, `MEMORY.md`, le sommaire d'un README.
+
+Une règle qui dit *ce qu'il faut faire* n'autorise pas à *le faire seul*. Mentionner un fichier au détour d'une option ou d'une justification ne vaut pas validation — il doit figurer dans une liste explicite.
+
 ### Docs locaux avant Jira
 
 Utiliser les fichiers locaux en priorité — ne jamais appeler Jira sans demande explicite de Maxime. Tout le backlog et toute la documentation sont disponibles localement (voir "Fichiers clés").
