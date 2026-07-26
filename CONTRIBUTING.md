@@ -311,4 +311,4 @@ Les identifiants par défaut de l'environnement correspondent aux données de `s
 requêtes fonctionnent sans réglage préalable après un `./scripts/dev-up.sh`.
 
 > Périmètre : outil de développement et de documentation. Cette collection n'est **pas** exécutée en
-> CI — les tests automatisés sont en xUnit (voir `docs/pages/backend/features/interne/niveaux-de-tests.md`).
+> CI — les tests automatisés sont en xUnit (voir `docs/pages/backend/qualite/niveaux-de-tests.md`).

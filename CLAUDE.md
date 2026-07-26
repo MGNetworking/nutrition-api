@@ -79,20 +79,27 @@ Racine de la documentation : `../docs/pages/backend/`
 | `design/design-api.md` | Couche API — controllers, routing, auth JWT, **table des routes** |
 | `design/regles-metier-consolidees.md` | Toutes les règles métier par entité — référence unique |
 
-### Backlog et implémentation
+### Systèmes — un dossier par système, tout ce qui lui appartient
 
 | Fichier | Contenu |
 |---|---|
-| `features/utilisateur/` | Fonctionnalités visibles — une fiche par fonctionnalité (diet, repas, aliments…) |
-| `features/interne/` | Fonctionnalités de fonctionnement applicatif (import OFF, purge RGPD, moteur de calcul…) |
+| `systemes/index.md` | Catalogue des systèmes — la porte d'entrée |
+| `systemes/<systeme>/index.md` | Le besoin et le périmètre (diet, repas, aliments, rgpd…) |
+| `systemes/<systeme>/workflow-*.md` | Le fonctionnement de bout en bout |
+| `systemes/aliments/` | Recherche, cache, mise à disposition, source Open Food Facts |
+| `systemes/bilan-nutritionnel/moteur-de-calcul.md` | Contrat du moteur de calcul nutritionnel |
 
-### Annexes
+Le public (utilisateur / interne) est porté par le champ `**Type :**` de chaque fiche, **pas** par
+un dossier.
+
+### Briques techniques, qualité, référence
 
 | Fichier | Contenu |
 |---|---|
-| `annexes/Diagramme-classes.md` | Diagramme Mermaid du modèle domaine |
-| `annexes/concept-moteur-architecture.md` | Concept "Moteur (Engine)" — patterns Strategy + Factory |
-| `features/interne/nutrition-calculator.md` | Contrat du moteur de calcul nutritionnel |
+| `briques/` | Technologies tierces — `redis.md`, `hangfire.md`, `keycloak-admin.md`, `stripe.md`, `environnement-local.md` |
+| `qualite/` | `niveaux-de-tests.md`, `recensement-des-tests.md` |
+| `reference/diagramme-classes.md` | Diagramme Mermaid du modèle domaine |
+| `reference/concept-moteur.md` | Concept "Moteur (Engine)" — patterns Strategy + Factory |
 
 ---
 
