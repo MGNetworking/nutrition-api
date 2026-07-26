@@ -7,6 +7,7 @@
 [![Dependabot](https://img.shields.io/badge/Dependabot-à_configurer-lightgrey)](https://github.com/MGNetworking/nutrition-api/network/updates)
 [![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://mgnetworking.github.io/docs-nutrition/)
 [![Release](https://img.shields.io/github/v/release/MGNetworking/nutrition-api)](https://github.com/MGNetworking/nutrition-api/releases)
+[![Licence](https://img.shields.io/badge/licence-FSL--1.1--ALv2-blue)](LICENSE)
 
 > Les badges Coverage, SonarCloud et Dependabot restent à brancher — voir NTR-120.
 
@@ -28,6 +29,7 @@ API SaaS de gestion nutritionnelle — backend ASP.NET Core 10, architecture DDD
 - [Documentation](#documentation)
 - [Contribution](#contribution)
 - [Version](#version)
+- [Licence](#licence)
 
 ---
 
@@ -300,6 +302,7 @@ nutrition-api/
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Environnement local, workflow Git, conventions de commit |
 | [CONFIGURATION.md](CONFIGURATION.md) | Fichiers de configuration, variables d'environnement, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Historique des versions |
+| [LICENSE](LICENSE) | Conditions d'utilisation — FSL-1.1-ALv2 |
 
 ---
 
@@ -326,3 +329,24 @@ Workflow complet, règles de protection de branches et stratégie CI : [CONTRIBU
 
 Voir [CHANGELOG.md](CHANGELOG.md) — généré automatiquement par
 [Release Please](https://github.com/googleapis/release-please) à partir des commits conventionnels.
+
+---
+
+## Licence
+
+Ce projet est distribué sous **Functional Source License 1.1, ALv2 Future License**
+(`FSL-1.1-ALv2`) — texte complet dans [LICENSE](LICENSE).
+
+Ce n'est pas une licence open source au sens de l'OSI, mais une licence *source-available* :
+
+| | |
+|---|---|
+| **Autorisé** | Utiliser, copier, modifier, créer des œuvres dérivées et redistribuer le code pour tout usage non concurrent — usage interne, enseignement non commercial, recherche non commerciale, prestation de services fournie à un licencié. |
+| **Interdit** | L'usage concurrent : proposer le code dans un produit ou service commercial qui se substitue à Nutrition API, se substitue à un autre produit que nous en tirons, ou offre une fonctionnalité identique ou substantiellement similaire. |
+| **Obligation** | Toute redistribution inclut ces conditions (ou un lien vers elles) et conserve les mentions de copyright. |
+
+**La restriction est temporaire.** Chaque version bascule automatiquement sous
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) au deuxième anniversaire de sa mise
+à disposition — le droit futur est accordé de façon irrévocable dès la publication.
+
+Copyright 2026 Ghalem Maxime.
