@@ -5,10 +5,12 @@ using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Infrastructure.Caching;
+using NutritionApi.Infrastructure.ExternalServices.Keycloak;
 using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.Infrastructure.Scheduling;
 using NutritionApi.Infrastructure.Persistence;
@@ -63,6 +65,8 @@ public static class InfrastructureExtensions
             .UseRecommendedSerializerSettings()
             .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 
+        // Lance la boucle de fond dans l'API.
+        // C'est elle qui, toutes les quelques secondes, regarde en base si un job est dû et l'exécute.
         services.AddHangfireServer();
 
         // Supervision des jobs planifiés — lit l'état des recurring jobs dans hangfire.hash
@@ -71,6 +75,29 @@ public static class InfrastructureExtensions
         // Import Open Food Facts — téléchargement du dump + alimentation du catalogue par lots
         services.AddHttpClient<IOffDumpReader, OffDumpReader>();
         services.AddScoped<IOffImportJob, OffImportJob>();
+
+        // ── Keycloak Admin ────────────────────────────────────────────────────
+        // Administration des comptes du realm : désactivation pendant la grace period RGPD,
+        // suppression définitive par le job de purge.
+        services.Configure<KeycloakAdminOptions>(configuration.GetSection(KeycloakAdminOptions.SectionName));
+
+        // Horloge injectable — le fournisseur de jetons l'utilise pour évaluer l'expiration.
+        services.AddSingleton(TimeProvider.System);
+
+        services.AddHttpClient(KeycloakTokenProvider.HttpClientName)
+                .AddStandardResilienceHandler();
+
+        // Le jeton de service est mémorisé entre les appels : le fournisseur doit survivre aux
+        // requêtes, d'où le singleton et son client HTTP résolu par la fabrique.
+        services.AddSingleton<IKeycloakTokenProvider>(sp => new KeycloakTokenProvider(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(KeycloakTokenProvider.HttpClientName),
+            sp.GetRequiredService<IOptions<KeycloakAdminOptions>>(),
+            sp.GetRequiredService<TimeProvider>()));
+
+        // Le handler standard retente les 5xx, 408 et 429 — le 401 reste géré par le service,
+        // seul capable d'invalider le jeton avant de rejouer.
+        services.AddHttpClient<IKeycloakAdminService, KeycloakAdminService>(KeycloakAdminService.HttpClientName)
+                .AddStandardResilienceHandler();
 
         return services;
     }
