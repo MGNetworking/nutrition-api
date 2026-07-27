@@ -9,6 +9,7 @@ using NutritionApi.Application;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Infrastructure;
 using NutritionApi.Infrastructure.Jobs.OffImport;
+using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.Infrastructure.Scheduling;
 using System.Reflection;
 
@@ -134,6 +135,14 @@ RecurringJob.AddOrUpdate<IOffImportJob>(
     IJobMonitoringService.ImportOffJobName,
     job => job.RunAsync(),
     Cron.Daily(3),
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Job de purge RGPD — chaque nuit à 03h30 UTC (NTR-56), décalé de l'import pour ne pas
+// concurrencer son écriture en base.
+RecurringJob.AddOrUpdate<IRgpdPurgeJob>(
+    IJobMonitoringService.RgpdPurgeJobName,
+    job => job.RunAsync(),
+    "30 3 * * *",
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.Run();

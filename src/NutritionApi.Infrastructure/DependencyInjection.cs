@@ -12,6 +12,7 @@ using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Infrastructure.Caching;
 using NutritionApi.Infrastructure.ExternalServices.Keycloak;
 using NutritionApi.Infrastructure.Jobs.OffImport;
+using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.Infrastructure.Scheduling;
 using NutritionApi.Infrastructure.Persistence;
 using NutritionApi.Infrastructure.Persistence.Repositories;
@@ -75,6 +76,9 @@ public static class InfrastructureExtensions
         // Import Open Food Facts — téléchargement du dump + alimentation du catalogue par lots
         services.AddHttpClient<IOffDumpReader, OffDumpReader>();
         services.AddScoped<IOffImportJob, OffImportJob>();
+
+        // Purge RGPD — suppression des comptes dont la grace period est expirée
+        services.AddScoped<IRgpdPurgeJob, RgpdPurgeJob>();
 
         // ── Keycloak Admin ────────────────────────────────────────────────────
         // Administration des comptes du realm : désactivation pendant la grace period RGPD,

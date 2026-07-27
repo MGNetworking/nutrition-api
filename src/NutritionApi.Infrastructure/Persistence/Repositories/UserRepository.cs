@@ -32,6 +32,14 @@ public sealed class UserRepository : IUserRepository
         return await _context.Users.CountAsync(u => u.DeletedAt != null && u.DeletedAt > limit);
     }
 
+    /// <summary>Retourne les comptes dont la demande de suppression précède la date limite.</summary>
+    /// <param name="limit">Date limite (UTC).</param>
+    /// <returns>Les utilisateurs dont <c>DeletedAt</c> est renseigné et antérieur ou égal à la limite.</returns>
+    public async Task<IReadOnlyList<User>> GetExpiredForPurgeAsync(DateTime limit)
+        => await _context.Users
+            .Where(u => u.DeletedAt != null && u.DeletedAt <= limit)
+            .ToListAsync();
+
     /// <summary>Retourne un utilisateur par son identifiant.</summary>
     /// <param name="id">Identifiant de l'utilisateur.</param>
     /// <returns>L'utilisateur correspondant, ou <c>null</c> s'il n'existe pas.</returns>
@@ -54,6 +62,18 @@ public sealed class UserRepository : IUserRepository
     public Task UpdateAsync(User user)
     {
         _context.Users.Update(user);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Marque un utilisateur comme supprimé — la persistance est déclenchée par l'unité de travail.
+    /// Repas, éléments de repas, pesées, aliments enregistrés, plans et régimes partent avec lui :
+    /// les clés étrangères qui pointent vers <c>users</c> sont toutes en <c>ON DELETE CASCADE</c>.
+    /// </summary>
+    /// <param name="user">Utilisateur à supprimer.</param>
+    public Task DeleteAsync(User user)
+    {
+        _context.Users.Remove(user);
         return Task.CompletedTask;
     }
 }
