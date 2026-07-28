@@ -150,3 +150,10 @@ app.MapControllers();
 // enregistré par AddInfrastructure. Rien à faire ici.
 
 app.Run();
+
+/// <summary>
+/// Rend la classe générée par les instructions de haut niveau accessible aux tests : sans cette
+/// déclaration, <c>Program</c> reste <c>internal</c> et <c>WebApplicationFactory&lt;Program&gt;</c>
+/// ne compile pas.
+/// </summary>
+public partial class Program;
