@@ -7,7 +7,8 @@ using System.Net;
 /// Vérifie le socle lui-même, avant tout test métier : l'application doit démarrer sans PostgreSQL,
 /// Redis ni Keycloak, et le pipeline d'authentification doit répondre comme en production.
 /// </summary>
-public class ApiFactoryTest : IClassFixture<ApiFactory>
+[Collection(ApiCollection.Name)]
+public class ApiFactoryTest
 {
     private readonly ApiFactory _factory;
 

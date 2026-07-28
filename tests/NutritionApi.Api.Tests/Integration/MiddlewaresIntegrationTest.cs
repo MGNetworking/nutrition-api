@@ -15,7 +15,8 @@ using System.Text;
 /// IT-AUTH-02 (jeton expiré) n'est pas ici : <c>TestAuthHandler</c> ne vérifie pas l'expiration,
 /// il remplace le composant qui s'en charge. Ce cas relève du niveau 3 (NTR-28).
 /// </remarks>
-public class MiddlewaresIntegrationTest : IClassFixture<ApiFactory>
+[Collection(ApiCollection.Name)]
+public class MiddlewaresIntegrationTest
 {
     private const string PlansEndpoint = "/api/v1/diet-plans";
     private const string AdminEndpoint = "/api/v1/admin/dashboard";
