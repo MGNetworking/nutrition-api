@@ -234,24 +234,26 @@ Un même comportement n'est jamais vérifié à deux niveaux.
 | Niveau | Question | Outil | Docker | État |
 |---|---|---|---|---|
 | **1 — Unitaires** | Ma logique métier est-elle correcte ? | xUnit + Moq | Non | ✅ en place |
-| **2 — Intégration interne** | Mes composants fonctionnent-ils ensemble ? | WebApplicationFactory | Non | ❌ non implémenté |
+| **2 — Intégration interne** | Mes composants fonctionnent-ils ensemble ? | WebApplicationFactory | Non | 🔨 socle en place (NTR-134) |
 | **3 — Intégration externe** | Mon application dialogue-t-elle avec ses dépendances réelles ? | WebApplicationFactory + docker-compose | Oui | ❌ non implémenté |
 | **4 — Smoke tests** | Le système déployé fonctionne-t-il ? | Client HTTP | Cluster | ❌ non implémenté |
 
-> **Seul le niveau 1 s'exécute aujourd'hui.** Les niveaux 2 et 3 existent sous forme de méthodes
-> vides marquées `[Fact(Skip = …)]`, porteuses des identifiants du recensement des tests
-> (`IT-DP-*`, `IT-DT-*`, `IT-JOB-*`, `IT-AUTH-*`). Elles décrivent le comportement attendu sans le
-> vérifier. Le socle manquant est listé en tête de chaque fichier de stubs :
-> `WebApplicationFactory<Program>`, un `appsettings.Testing.json`, un helper de génération de JWT
-> signé, et des méthodes de chargement de fixtures.
+> **Le socle du niveau 2 existe depuis NTR-134** — `Integration/Fixtures/ApiFactory.cs` et
+> `TestAuthHandler.cs` — mais aucun test métier n'a encore été écrit : c'est l'objet des tickets
+> NTR-105 à NTR-111. Les fichiers de stubs `[Fact(Skip = …)]` restent en place, porteurs des
+> identifiants du recensement (`IT-DP-*`, `IT-DT-*`, `IT-JOB-*`, `IT-AUTH-*`).
+>
+> ➜ **[Écrire un test de niveau 2](https://mgnetworking.github.io/docs-nutrition/backend/qualite/tests-niveau-2/)** — fonctionnement du socle, rôle de chaque classe et gabarit de test.
 
 **Niveau 1 — Unitaires.** Entités du domaine, invariants, services applicatifs avec repositories
 mockés. Rapides, sans dépendance externe. C'est le niveau le plus fourni, et le seul couvert par la
 CI.
 
-**Niveau 2 — Intégration interne.** *Prévu.* Routing, sérialisation, middlewares, policies
-d'autorisation. L'application sera montée en mémoire, les dépendances externes remplacées par des
-faux.
+**Niveau 2 — Intégration interne.** *Socle en place.* Routing, sérialisation, middlewares, policies
+d'autorisation. L'application est montée en mémoire par `ApiFactory`, et les onze interfaces de
+frontière — repositories, unité de travail, cache, Keycloak Admin, supervision — sont remplacées par
+des doublures. L'authentification passe par `TestAuthHandler`, qui construit l'identité depuis des
+en-têtes : sans Keycloak, aucun jeton signé n'est productible.
 
 **Niveau 3 — Intégration externe.** *Prévu.* Les trois services du `docker-compose.yml` seront
 réels : validation des requêtes EF Core contre PostgreSQL, du TTL du cache Redis, et de la chaîne
@@ -267,6 +269,12 @@ métier.
 # Tous les tests
 dotnet test
 
+# Uniquement les tests d'intégration (niveau 2)
+dotnet test --filter "FullyQualifiedName~Integration"
+
+# Tout sauf eux — utile pour garder une boucle rapide
+dotnet test --filter "FullyQualifiedName!~Integration"
+
 # Avec couverture de code
 dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
 
@@ -277,6 +285,25 @@ reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"covera
 ```
 
 Le rapport est généré dans `coverage/report/index.html`.
+
+**Pourquoi la sélection se fait sur le namespace**
+
+`--filter` est une option native de `dotnet test`. `FullyQualifiedName` désigne le nom complet du
+test, **namespace compris**, et `~` signifie « contient » :
+
+```
+NutritionApi.Api.Tests.Integration.ApiFactoryTest.ProtectedEndpoint_WithoutIdentity_Returns401
+└──────────────── namespace ─────────────────┘ └── classe ──┘ └────────── méthode ──────────┘
+```
+
+Tous les tests de niveau 2 vivent dans le namespace `NutritionApi.Api.Tests.Integration`. C'est
+**cette convention, et elle seule**, qui rend la sélection possible : il n'existe aucun attribut ni
+catégorie qui les distinguerait autrement. D'où la règle — un test de niveau 2 se place dans
+`Integration/`, sans exception.
+
+L'intérêt pratique est double : lancer les tests d'intégration seuls quand on travaille dessus, et
+surtout **les exclure** pendant le développement courant, puisqu'ils démarrent l'API et coûtent
+plusieurs dizaines de secondes là où les tests unitaires se comptent en millisecondes.
 
 **Seuils de couverture par couche**
 
