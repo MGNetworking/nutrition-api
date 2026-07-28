@@ -6,10 +6,7 @@ using Microsoft.OpenApi.Models;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Application;
-using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Infrastructure;
-using NutritionApi.Infrastructure.Jobs.OffImport;
-using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.Infrastructure.Scheduling;
 using System.Reflection;
 
@@ -149,20 +146,7 @@ app.MapHangfireDashboard("/hangfire", new DashboardOptions
 app.UseMiddleware<UserResolutionMiddleware>(); // Résout keycloakId → User.Id interne
 app.MapControllers();
 
-// Job d'import Open Food Facts — chaque nuit à 03h00 UTC (volet Remplissage de NTR-55).
-// Enregistré ici pour que le storage Hangfire soit prêt ; il apparaît dès lors dans la supervision.
-RecurringJob.AddOrUpdate<IOffImportJob>(
-    IJobMonitoringService.ImportOffJobName,
-    job => job.RunAsync(),
-    Cron.Daily(3),
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-// Job de purge RGPD — chaque nuit à 03h30 UTC (NTR-56), décalé de l'import pour ne pas
-// concurrencer son écriture en base.
-RecurringJob.AddOrUpdate<IRgpdPurgeJob>(
-    IJobMonitoringService.RgpdPurgeJobName,
-    job => job.RunAsync(),
-    "30 3 * * *",
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+// Les jobs récurrents sont déclarés par RecurringJobRegistrationService (couche Infrastructure),
+// enregistré par AddInfrastructure. Rien à faire ici.
 
 app.Run();

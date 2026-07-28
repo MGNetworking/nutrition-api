@@ -70,6 +70,11 @@ public static class InfrastructureExtensions
         // C'est elle qui, toutes les quelques secondes, regarde en base si un job est dû et l'exécute.
         services.AddHangfireServer();
 
+        // Déclare les jobs récurrents au démarrage. Hosted service et non appel direct dans
+        // Program.cs : un test d'intégration peut ainsi le retirer avec le serveur Hangfire,
+        // et un storage injoignable n'empêche plus l'API de démarrer.
+        services.AddHostedService<RecurringJobRegistrationService>();
+
         // Supervision des jobs planifiés — lit l'état des recurring jobs dans hangfire.hash
         services.AddScoped<IJobMonitoringService, JobMonitoringService>();
 
