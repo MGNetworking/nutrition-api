@@ -204,7 +204,7 @@ résumé, ses codes de réponse et le schéma de ses DTOs. Le bouton **Authorize
 
 ### Collection Postman
 
-Le dossier `postman/` contient une collection couvrant les 36 endpoints, groupés par ressource :
+Le dossier `postman/` contient une collection couvrant les 36 endpoints REST groupés par ressource, plus un dossier « Plateforme » pour les surfaces qui n'en sont pas — dashboard Hangfire et spec OpenAPI :
 
 | Fichier | Usage |
 |---|---|

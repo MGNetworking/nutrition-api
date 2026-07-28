@@ -281,7 +281,7 @@ Une collection de développement est versionnée dans `postman/` :
 
 | Fichier | Contenu |
 |---|---|
-| `nutrition-api.postman_collection.json` | Les 36 endpoints, groupés par ressource |
+| `nutrition-api.postman_collection.json` | Les 36 endpoints REST groupés par ressource, plus un dossier « Plateforme » (dashboard Hangfire, spec OpenAPI) |
 | `nutrition-dev.postman_environment.json` | Mode dev — API sur le host, port 5099 |
 | `nutrition-docker.postman_environment.json` | Mode Docker — API conteneurisée, port 5100 |
 
