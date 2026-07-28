@@ -10,7 +10,7 @@ namespace NutritionApi.Application.DTOS.Users;
 /// <param name="ActivityLevel">Niveau d'activité physique.</param>
 /// <param name="Height">Taille de l'utilisateur, en centimètres.</param>
 /// <param name="Allergies">Allergènes de l'utilisateur.</param>
-/// <param name="DietaryPreferences">Préférences alimentaires libres.</param>
+/// <param name="DietaryPreferences">Régimes alimentaires déclarés, en liste fermée.</param>
 /// <param name="SubscriptionTier">Palier d'abonnement (Free, Pro ou Business).</param>
 /// <param name="CreatedAt">Date de création du compte (UTC).</param>
 public record UserProfileResponse(
@@ -20,7 +20,7 @@ public record UserProfileResponse(
     ActivityLevel ActivityLevel,
     float Height,
     List<Allergen> Allergies,
-    List<string> DietaryPreferences,
+    List<DietaryPreference> DietaryPreferences,
     SubscriptionTier SubscriptionTier,
     DateTime CreatedAt
 )

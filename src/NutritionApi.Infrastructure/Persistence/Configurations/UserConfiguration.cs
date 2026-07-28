@@ -41,6 +41,13 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.DietaryPreferences)
                .HasColumnType("text[]")
+               .HasConversion(
+                   v => v.Select(p => p.ToString()).ToArray(),
+                   v => v.Select(s => Enum.Parse<DietaryPreference>(s)).ToList(),
+                   new ValueComparer<List<DietaryPreference>>(
+                       (a, b) => a!.SequenceEqual(b!),
+                       v => v.Aggregate(0, (h, e) => HashCode.Combine(h, e.GetHashCode())),
+                       v => v.ToList()))
                .HasDefaultValueSql("'{}'");
 
         builder.Property(u => u.SubscriptionTier)

@@ -48,7 +48,7 @@ public class UsersControllerTest
             activityLevel: ActivityLevel.Sedentary,
             height: 180,
             allergies: new List<Allergen>() { Allergen.Gluten },
-            dietaryPreferences: new List<string>() { "Vegetarian" },
+            dietaryPreferences: new List<DietaryPreference>() { DietaryPreference.Vegetarian },
             weight: 75
         );
 

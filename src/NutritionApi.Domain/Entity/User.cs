@@ -30,8 +30,8 @@ public class User
     /// <summary>Allergènes de l'utilisateur (14 allergènes officiels UE) — liste vide = confirmé aucune allergie.</summary>
     public List<Allergen> Allergies { get; private set; } = new List<Allergen>();
 
-    /// <summary>Préférences alimentaires libres, non filtrantes — liste vide = confirmé aucune préférence.</summary>
-    public List<string> DietaryPreferences { get; private set; } = new List<string>();
+    /// <summary>Régimes alimentaires déclarés, non filtrants — liste vide = confirmé aucune préférence.</summary>
+    public List<DietaryPreference> DietaryPreferences { get; private set; } = new List<DietaryPreference>();
 
     /// <summary>Palier d'abonnement — Free par défaut à la création ; source de vérité en base, jamais lue depuis le JWT.</summary>
     public SubscriptionTier SubscriptionTier { get; private set; } = SubscriptionTier.Free;
@@ -64,7 +64,7 @@ public class User
         ActivityLevel activityLevel,
         float height,
         List<Allergen> allergies,
-        List<string> dietaryPreferences)
+        List<DietaryPreference> dietaryPreferences)
     {
         Id = Guid.NewGuid();
         ArgumentException.ThrowIfNullOrWhiteSpace(keycloakId);
@@ -151,7 +151,7 @@ public class User
     /// <summary>Remplace la liste complète des préférences alimentaires.</summary>
     /// <param name="dietaryPreferences">Nouvelle liste de préférences — vide = confirmé aucune préférence.</param>
     /// <exception cref="ArgumentNullException">dietaryPreferences est null.</exception>
-    public void SetDietaryPreference(List<string> dietaryPreferences)
+    public void SetDietaryPreference(List<DietaryPreference> dietaryPreferences)
     {
         ArgumentNullException.ThrowIfNull(dietaryPreferences);
         DietaryPreferences = dietaryPreferences;
@@ -160,7 +160,7 @@ public class User
     /// <summary>Ajoute une préférence alimentaire — doublon interdit.</summary>
     /// <param name="dietaryPreference">Préférence à ajouter.</param>
     /// <exception cref="ArgumentException">La préférence est déjà enregistrée.</exception>
-    public void AddDietaryPreference(string dietaryPreference)
+    public void AddDietaryPreference(DietaryPreference dietaryPreference)
     {
         if (DietaryPreferences.Contains(dietaryPreference))
             throw new ArgumentException($"Dietary preference is already registered. Received: {dietaryPreference}", nameof(dietaryPreference));
@@ -170,7 +170,7 @@ public class User
     /// <summary>Retire une préférence alimentaire — elle doit exister.</summary>
     /// <param name="dietaryPreference">Préférence à retirer.</param>
     /// <exception cref="ArgumentException">La préférence n'est pas enregistrée.</exception>
-    public void RemoveDietaryPreference(string dietaryPreference)
+    public void RemoveDietaryPreference(DietaryPreference dietaryPreference)
     {
         if (!DietaryPreferences.Contains(dietaryPreference))
             throw new ArgumentException($"Dietary preference is not registered. Received: {dietaryPreference}", nameof(dietaryPreference));

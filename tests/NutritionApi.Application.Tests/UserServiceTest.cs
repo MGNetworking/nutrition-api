@@ -37,7 +37,7 @@ public class UserServiceTest
         var activityLevel = ActivityLevel.LightlyActive;
         var height = 180f;
         var allergies = new List<Allergen>();
-        var DietaryPreferences = new List<string>();
+        var DietaryPreferences = new List<DietaryPreference>();
 
         var createUser = new CreateUserProfileRequest(
                 birthDate: birthDate,
