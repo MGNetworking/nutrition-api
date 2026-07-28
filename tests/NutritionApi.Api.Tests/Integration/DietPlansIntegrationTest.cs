@@ -1,12 +1,22 @@
 namespace NutritionApi.Api.Tests.Integration;
 
-// Prérequis avant d'implémenter :
-//   - WebApplicationFactory<Program> + appsettings.Testing.json
-//   - docker-compose (PostgreSQL, Redis, Keycloak réels — décision du 2026-07-21)
-//   - Helper de génération de JWT signé avec la clé de test
-//   - Méthodes SeedAsync() pour pré-charger les fixtures
+// Tests de NIVEAU 2 — pipeline HTTP (NTR-29 / NTR-108).
 //
-// Référence : docs/pages/backend/features/interne/recensement-des-tests.md — section DietPlansController
+// Prérequis avant d'implémenter :
+//   - ApiFactory (Integration/Fixtures/) — WebApplicationFactory<Program>
+//   - TestAuthHandler — pas de Keycloak à ce niveau
+//   - Doublures des repositories et de IUnitOfWork, armées par test
+//
+// Ce qui est réel ici : routing, model binding, ExceptionMiddleware,
+// UserResolutionMiddleware, autorisation, sérialisation, codes de statut.
+// Ce qui ne l'est pas : PostgreSQL, Redis, Keycloak — ils appartiennent au
+// niveau 3 (NTR-28). Un test qui a besoin d'eux n'a pas sa place dans ce fichier.
+//
+// L'en-tête précédent annonçait docker-compose et des JWT signés : c'était une
+// description de niveau 3, corrigée le 2026-07-27 après arbitrage de la frontière
+// entre niveaux 2 et 3.
+//
+// Référence : docs/pages/backend/qualite/recensement-des-tests.md — section DietPlansController
 
 public class DietPlansIntegrationTest
 {
