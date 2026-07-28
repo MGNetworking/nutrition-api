@@ -40,6 +40,7 @@
                   "    const json = pm.response.json();",
                   "    pm.expect(json).to.have.property(\"access_token\");",
                   "    pm.collectionVariables.set(\"accessToken\", json.access_token);",
+                  "    pm.collectionVariables.set(\"accessTokenUser\", json.access_token);",
                   "    console.log(\"Jeton enregistré pour test-user\");",
                   "});"
                 ]
@@ -106,6 +107,7 @@
                   "    const json = pm.response.json();",
                   "    pm.expect(json).to.have.property(\"access_token\");",
                   "    pm.collectionVariables.set(\"accessToken\", json.access_token);",
+                  "    pm.collectionVariables.set(\"accessTokenPro\", json.access_token);",
                   "    console.log(\"Jeton enregistré pour test-pro\");",
                   "});"
                 ]
@@ -172,6 +174,7 @@
                   "    const json = pm.response.json();",
                   "    pm.expect(json).to.have.property(\"access_token\");",
                   "    pm.collectionVariables.set(\"accessToken\", json.access_token);",
+                  "    pm.collectionVariables.set(\"accessTokenAdmin\", json.access_token);",
                   "    console.log(\"Jeton enregistré pour test-admin\");",
                   "});"
                 ]
@@ -292,7 +295,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"birthDate\": \"1992-03-15\",\n  \"gender\": 1,\n  \"activityLevel\": 4,\n  \"height\": 180,\n  \"allergies\": [1],\n  \"dietaryPreferences\": [\"vegetarien\"]\n}"
+              "raw": "{\n  \"birthDate\": \"1992-03-15\",\n  \"gender\": 1,\n  \"activityLevel\": 4,\n  \"height\": 180,\n  \"allergies\": [1],\n  \"dietaryPreferences\": [1]\n}"
             },
             "url": {
               "raw": "{{apiUrl}}/api/v1/users/me",
@@ -1188,6 +1191,136 @@
             },
             "description": "⚠️ 500 tant que NTR-55 n'est pas livré."
           }
+        }
+      ]
+    },
+    {
+      "name": "Plateforme",
+      "description": "Surfaces hors API REST : dashboard Hangfire et spec OpenAPI.\n\nCes requêtes ne servent pas à consulter ces pages — le dashboard est une UI web, sa réponse est du HTML inexploitable ici. Elles vérifient le **contrôle d'accès** et la **génération de la spec**, deux choses qu'aucun autre test ne couvre.\n\nPour consulter le dashboard, ouvrir http://localhost:5099/hangfire dans un navigateur.",
+      "item": [
+        {
+          "name": "Dashboard Hangfire — admin (200)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessTokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/hangfire",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "hangfire"
+              ]
+            },
+            "description": "Prérequis : jouer « Jeton — test-admin » au moins une fois.\n\nRéponse : du HTML, normal — /hangfire n'est servi par aucun controller mais par un middleware du package Hangfire.AspNetCore, monté dans Program.cs par MapHangfireDashboard. Seul le statut compte ici."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"L'admin accède au dashboard\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard Hangfire — non-admin (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessTokenUser}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/hangfire",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "hangfire"
+              ]
+            },
+            "description": "Prérequis : jouer « Jeton — test-user » au moins une fois.\n\nVérifie HangfireAdminAuthorizationFilter : un utilisateur authentifié sans le rôle admin doit être refusé. C'est le seul test automatisé de ce filtre — voir l'état de confiance de systemes/plateforme/pipeline-http.md."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Un non-admin est refusé\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Spec OpenAPI",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/swagger/v1/swagger.json",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "swagger",
+                "v1",
+                "swagger.json"
+              ]
+            },
+            "description": "Spec générée par Swashbuckle. Sans authentification, et indisponible en production (UseSwagger n'est monté que hors Production).\n\nC'est le fichier à importer dans Postman ou à donner à NSwag/Kiota pour valider l'exploitabilité du contrat (NTR-121)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"La spec est générée\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.property(\"paths\");",
+                  "});",
+                  "",
+                  "pm.test(\"Le dashboard Hangfire n'est pas dans la spec\", function () {",
+                  "    const paths = Object.keys(pm.response.json().paths);",
+                  "    pm.expect(paths.filter(p => p.startsWith(\"/hangfire\"))).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
