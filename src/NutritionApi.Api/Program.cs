@@ -13,11 +13,27 @@ using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.Infrastructure.Scheduling;
 using System.Reflection;
 
+// Politique CORS appliquée aux appels du front — définie plus bas à partir de la configuration.
+const string FrontCorsPolicy = "front";
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Middlewares ────────────────────────────────────────────────────────────────
+builder.Services.AddScoped<RequestLoggingMiddleware>();
 builder.Services.AddScoped<ExceptionMiddleware>();
 builder.Services.AddScoped<UserResolutionMiddleware>();
+
+// ── CORS ───────────────────────────────────────────────────────────────────────
+// Seules les origines déclarées dans Cors:AllowedOrigins sont acceptées. Section absente
+// ou vide = aucune origine autorisée : un oubli de configuration bloque, il n'ouvre pas.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontCorsPolicy, policy => policy
+        .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials());
+});
 
 // ── Application layer ──────────────────────────────────────────────────────────
 builder.Services.AddApplication();
@@ -103,6 +119,11 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 // ── Pipeline HTTP ──────────────────────────────────────────────────────────────
+// En tête de pipeline : c'est la seule position d'où la durée mesurée est celle de la
+// requête entière, et d'où le statut lu est celui réellement renvoyé — y compris le 500
+// écrit par ExceptionMiddleware ou la redirection émise par UseHttpsRedirection.
+app.UseMiddleware<RequestLoggingMiddleware>(); // Trace méthode, route, statut et durée
+
 if (!app.Environment.IsProduction())
 {
     app.UseSwagger();
@@ -111,8 +132,7 @@ if (!app.Environment.IsProduction())
 }
 
 app.UseHttpsRedirection();
-// TODO : configurer AddCors() dans builder.Services
-// app.UseCors();
+app.UseCors(FrontCorsPolicy);                 // Restreint aux origines front configurées
 
 app.UseMiddleware<ExceptionMiddleware>();      // Intercepte toutes les exceptions non gérées
 app.UseAuthentication();                      // Valide le JWT Bearer
