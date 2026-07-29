@@ -27,7 +27,11 @@ public class FoodItemsIntegrationTest
 
     private readonly ApiFactory _factory;
 
-    public FoodItemsIntegrationTest(ApiFactory factory) => _factory = factory;
+    public FoodItemsIntegrationTest(ApiFactory factory)
+    {
+        _factory = factory;
+        _factory.ResetInvocations();
+    }
 
     [Fact]
     public async Task IT_FD_01_CacheDisponible_Retourne200SansInterrogerLeCatalogue()

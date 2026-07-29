@@ -122,4 +122,28 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Crée un client sans identité — pour vérifier les 401.</summary>
     /// <returns>Un client HTTP anonyme.</returns>
     public HttpClient CreateAnonymousClient() => CreateClient();
+
+    /// <summary>
+    /// Efface l'historique d'appels de toutes les doublures, sans toucher à leurs configurations.
+    /// </summary>
+    /// <remarks>
+    /// La fabrique étant partagée par toute la suite, <c>Verify(…, Times.Never)</c> compterait sinon
+    /// les appels de <b>tous</b> les tests précédents : un test verrait échouer une vérification à
+    /// cause d'un autre. À appeler dans le constructeur de chaque classe de tests — xUnit
+    /// l'instancie avant chaque méthode, la remise à zéro est donc automatique.
+    /// </remarks>
+    public void ResetInvocations()
+    {
+        Users.Invocations.Clear();
+        DietPlans.Invocations.Clear();
+        Diets.Invocations.Clear();
+        Meals.Invocations.Clear();
+        FoodItems.Invocations.Clear();
+        WeightEntries.Invocations.Clear();
+        SavedFoodItems.Invocations.Clear();
+        UnitOfWork.Invocations.Clear();
+        FoodCache.Invocations.Clear();
+        KeycloakAdmin.Invocations.Clear();
+        JobMonitoring.Invocations.Clear();
+    }
 }

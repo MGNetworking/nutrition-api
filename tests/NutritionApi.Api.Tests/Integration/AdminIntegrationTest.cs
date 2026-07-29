@@ -22,7 +22,11 @@ public class AdminIntegrationTest
 
     private readonly ApiFactory _factory;
 
-    public AdminIntegrationTest(ApiFactory factory) => _factory = factory;
+    public AdminIntegrationTest(ApiFactory factory)
+    {
+        _factory = factory;
+        _factory.ResetInvocations();
+    }
 
     private HttpClient Admin => _factory.CreateAuthenticatedClient(roles: "admin");
 

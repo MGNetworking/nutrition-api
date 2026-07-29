@@ -19,7 +19,11 @@ public class DietsIntegrationTest
 
     private readonly ApiFactory _factory;
 
-    public DietsIntegrationTest(ApiFactory factory) => _factory = factory;
+    public DietsIntegrationTest(ApiFactory factory)
+    {
+        _factory = factory;
+        _factory.ResetInvocations();
+    }
 
     private static MacroDistribution Macros => new(30, 40, 30);
 
