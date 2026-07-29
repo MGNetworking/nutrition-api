@@ -196,6 +196,7 @@ public class MealService : IMealService
     /// <param name="itemId">Identifiant du MealItem à retirer.</param>
     /// <returns>Le repas mis à jour.</returns>
     /// <exception cref="NotFoundException">Le repas n'existe pas.</exception>
+    /// <exception cref="NotFoundException">Le MealItem n'appartient pas à ce repas.</exception>
     /// <exception cref="ForbiddenException">Le repas n'appartient pas à l'utilisateur.</exception>
     public async Task<MealResponse> RemoveItemAsync(Guid userId, Guid mealId, Guid itemId)
     {
@@ -204,6 +205,12 @@ public class MealService : IMealService
             throw new NotFoundException("Meal not found.");
         if (meal.UserId != userId)
             throw new ForbiddenException("You do not have access to this meal.");
+
+        // L'absence de l'item est un 404, pas une donnée invalide. Le domaine ne peut pas le
+        // signaler lui-même : NotFoundException vit dans Application, que Domain ne référence pas.
+        // La vérification est donc portée ici, la garde du domaine restant le dernier recours.
+        if (meal.MealItems.All(item => item.Id != itemId))
+            throw new NotFoundException("Meal item not found.");
 
         meal.RemoveMealItem(itemId);
 

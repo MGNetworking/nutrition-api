@@ -119,6 +119,51 @@ public class MiddlewaresIntegrationTest
         Assert.DoesNotContain("chaîne de connexion", corps);
     }
 
+    // ── Invariants de domaine et dépendances — NTR-135 ────────────────────────
+
+    [Fact]
+    public async Task InvariantDeDomaineViole_Retourne422()
+    {
+        GivenPlansReadThrows(new ArgumentException("Macro percentages must sum to 100."));
+
+        var reponse = await _factory.CreateAuthenticatedClient().GetAsync(PlansEndpoint);
+        var corps = await reponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
+
+        // Le message vient du domaine et décrit la règle violée : il est utile au client.
+        Assert.Contains("sum to 100", corps);
+    }
+
+    [Fact]
+    public async Task DependanceIndisponible_Retourne503AvecRetryAfter()
+    {
+        GivenPlansReadThrows(new ServiceUnavailableException("PostgreSQL"));
+
+        var reponse = await _factory.CreateAuthenticatedClient().GetAsync(PlansEndpoint);
+        var corps = await reponse.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, reponse.StatusCode);
+        Assert.NotNull(reponse.Headers.RetryAfter);
+
+        // Le nom de la dépendance appartient au journal, pas à la réponse.
+        Assert.DoesNotContain("PostgreSQL", corps);
+    }
+
+    [Fact]
+    public async Task ToutProblemDetails_PorteUnTraceId()
+    {
+        GivenPlansReadThrows(new NotFoundException("introuvable"));
+
+        var reponse = await _factory.CreateAuthenticatedClient().GetAsync(PlansEndpoint);
+        var corps = await reponse.Content.ReadAsStringAsync();
+
+        // Le lien entre le signalement d'un utilisateur et la trace serveur.
+        Assert.Contains("traceId", corps);
+        Assert.Contains("\"title\"", corps);
+        Assert.Contains("\"type\"", corps);
+    }
+
     // ── Authentification et autorisation — IT-AUTH ────────────────────────────
 
     [Fact]
