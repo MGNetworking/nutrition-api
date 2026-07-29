@@ -53,17 +53,41 @@ public class UsersIntegrationTest
     [Fact]
     public async Task IT_USR_01_CreationDunNouveauProfil_Retourne201()
     {
-        // Le middleware refuse un sub sans profil : la création passe donc par un client dont
-        // l'identité n'a volontairement pas de profil… mais l'endpoint est [AllowAnonymous] ?
-        // Non : c'est le seul endpoint que le middleware laisse passer sans profil existant.
+        // Aucun profil pour ce sub : c'est exactement la situation d'un nouvel utilisateur.
         _factory.Users.Setup(r => r.GetByKeycloakIdAsync(SubInconnu)).ReturnsAsync((User?)null);
 
         var reponse = await _factory.CreateAuthenticatedClient(subject: SubInconnu)
             .PostAsJsonAsync(Me, RequeteCreation());
 
-        // Sans profil en base, UserResolutionMiddleware coupe la chaîne avant le controller.
-        // C'est un comportement voulu, mais il rend la création de profil inatteignable :
-        // écart signalé, voir le commentaire de fin de fichier.
+        // L'attribut [AllowWithoutProfile] dispense cette action de l'exigence de profil.
+        // Sans lui, UserResolutionMiddleware couperait la chaîne et la création serait
+        // inatteignable — il faudrait déjà posséder un profil pour en créer un.
+        Assert.Equal(HttpStatusCode.Created, reponse.StatusCode);
+        _factory.Users.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Once);
+        _factory.WeightEntries.Verify(r => r.AddAsync(It.IsAny<WeightEntry>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task IT_USR_02_ProfilDejaExistant_Retourne409()
+    {
+        var utilisateur = GivenUtilisateurCourant();
+        _factory.Users.Setup(r => r.GetByKeycloakIdAsync(ApiFactory.DefaultSubject)).ReturnsAsync(utilisateur);
+
+        var reponse = await _factory.CreateAuthenticatedClient()
+            .PostAsJsonAsync(Me, RequeteCreation());
+
+        Assert.Equal(HttpStatusCode.Conflict, reponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task LesAutresRoutes_SansProfil_Retournent401()
+    {
+        _factory.Users.Setup(r => r.GetByKeycloakIdAsync(SubInconnu)).ReturnsAsync((User?)null);
+
+        var reponse = await _factory.CreateAuthenticatedClient(subject: SubInconnu).GetAsync(Me);
+
+        // La dispense ne vaut que pour la création : partout ailleurs, un jeton valide sans profil
+        // reste refusé.
         Assert.Equal(HttpStatusCode.Unauthorized, reponse.StatusCode);
     }
 
