@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Moq.Protected;
+using NutritionApi.Application.Exceptions;
 using NutritionApi.Infrastructure.ExternalServices.Keycloak;
 using System.Net;
 
@@ -182,6 +183,38 @@ public class KeycloakAdminServiceTest
         GivenResponse(HttpStatusCode.InternalServerError);
 
         await Assert.ThrowsAsync<HttpRequestException>(() => CreateService().DeleteUserAsync(KeycloakId));
+    }
+
+    [Fact]
+    public async Task DeleteUserAsync_ThrowsServiceUnavailableWhenKeycloakIsUnreachable()
+    {
+        GivenToken();
+        _handler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("connexion refusée"));
+
+        var exception = await Assert.ThrowsAsync<ServiceUnavailableException>(
+            () => CreateService().DeleteUserAsync(KeycloakId));
+
+        Assert.Equal("Keycloak", exception.Dependency);
+    }
+
+    [Fact]
+    public async Task DeleteUserAsync_ThrowsServiceUnavailableOnTimeout()
+    {
+        GivenToken();
+        _handler.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new TaskCanceledException("délai dépassé"));
+
+        await Assert.ThrowsAsync<ServiceUnavailableException>(
+            () => CreateService().DeleteUserAsync(KeycloakId));
     }
 
     [Fact]

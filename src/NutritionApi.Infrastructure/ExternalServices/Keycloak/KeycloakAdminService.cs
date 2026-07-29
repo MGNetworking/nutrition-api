@@ -2,6 +2,7 @@ namespace NutritionApi.Infrastructure.ExternalServices.Keycloak;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using System.Net;
 using System.Net.Http.Headers;
@@ -73,12 +74,28 @@ public sealed class KeycloakAdminService : IKeycloakAdminService
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(keycloakId);
 
-        var response = await SendOnceAsync(method, keycloakId, contentFactory);
+        HttpResponseMessage response;
 
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        try
         {
-            _tokenProvider.Invalidate();
             response = await SendOnceAsync(method, keycloakId, contentFactory);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                _tokenProvider.Invalidate();
+                response = await SendOnceAsync(method, keycloakId, contentFactory);
+            }
+        }
+        // Une HttpRequestException sans statut signale un échec réseau : Keycloak n'a pas répondu.
+        // Avec un statut, elle vient d'une réponse HTTP d'erreur — ce n'est pas une indisponibilité,
+        // et la confondre masquerait un défaut de configuration en panne passagère.
+        catch (HttpRequestException exception) when (exception.StatusCode is null)
+        {
+            throw new ServiceUnavailableException("Keycloak", exception);
+        }
+        catch (TaskCanceledException exception)
+        {
+            throw new ServiceUnavailableException("Keycloak", exception);
         }
 
         if (response.StatusCode == HttpStatusCode.NotFound)

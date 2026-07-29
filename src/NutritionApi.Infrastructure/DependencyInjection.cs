@@ -15,6 +15,7 @@ using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.Infrastructure.Scheduling;
 using NutritionApi.Infrastructure.Persistence;
+using NutritionApi.Infrastructure.Persistence.Interceptors;
 using NutritionApi.Infrastructure.Persistence.Repositories;
 using StackExchange.Redis;
 
@@ -27,9 +28,13 @@ public static class InfrastructureExtensions
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
+        // L'intercepteur traduit les échecs PostgreSQL en exceptions applicatives, en un seul point
+        // pour toutes les commandes : violation d'unicité en conflit, base injoignable en
+        // indisponibilité. Sans lui, la couche API devrait connaître Npgsql pour les distinguer.
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString)
-                   .UseSnakeCaseNamingConvention());
+                   .UseSnakeCaseNamingConvention()
+                   .AddInterceptors(new DatabaseExceptionInterceptor()));
 
         // L'unité de travail est le DbContext lui-même — même instance dans la portée de la requête
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
