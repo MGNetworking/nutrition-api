@@ -212,6 +212,12 @@ public class MealService : IMealService
         if (meal.MealItems.All(item => item.Id != itemId))
             throw new NotFoundException("Meal item not found.");
 
+        // Le domaine interdit de vider un repas et le signale par une InvalidOperationException,
+        // trop générique pour être traduite globalement — elle recouvre aussi de vrais défauts.
+        // La demande est ici recevable mais inexploitable en l'état : 422.
+        if (meal.MealItems.Count <= 1)
+            throw new UnprocessableException("A meal must keep at least one item. Delete the meal instead.");
+
         meal.RemoveMealItem(itemId);
 
         await _mealRepository.UpdateAsync(meal);
