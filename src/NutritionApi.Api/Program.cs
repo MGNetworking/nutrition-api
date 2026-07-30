@@ -5,6 +5,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NutritionApi.Api.Extensions;
 using NutritionApi.Api.Middleware;
+using NutritionApi.Api.Startup;
 using NutritionApi.Application;
 using NutritionApi.Infrastructure;
 using NutritionApi.Infrastructure.Scheduling;
@@ -68,6 +69,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true   // Vérifie la signature avec la clé publique Keycloak
         };
     });
+
+// ── Disponibilité du serveur d'identité au démarrage ───────────────────────────
+// La validation des jetons est locale, à partir des clés du realm mises en cache. Une instance
+// démarrée sans avoir pu les récupérer accepterait le trafic et refuserait tous les jetons.
+// Ce service force la récupération et interrompt le démarrage si elle n'aboutit pas.
+builder.Services.AddHostedService<KeycloakAvailabilityService>();
 
 // ── Autorisation ───────────────────────────────────────────────────────────────
 // AdminOnly : réservé aux endpoints /api/v1/admin — rôle "admin" requis dans Keycloak
