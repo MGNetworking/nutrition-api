@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Application.Exceptions;
+using System.Runtime.ExceptionServices;
 
 namespace NutritionApi.Api.Middleware
 {
@@ -70,7 +71,21 @@ namespace NutritionApi.Api.Middleware
         {
             try
             {
-                await next(context);
+                // ── Exceptions applicatives enveloppées ───────────────────────
+                // EF Core encapsule les échecs de commande : l'exception que DatabaseExceptionInterceptor
+                // produit remonte dans l'InnerException d'une DbUpdateException, jamais nue. Sans ce
+                // déballage, un conflit d'unicité ou une base injoignable tombait dans le catch final
+                // et repartait en 500 — l'intercepteur travaillait pour rien.
+                // Le déballage est volontairement générique : reconnaître DbUpdateException par son type
+                // obligerait cette couche à référencer EF Core, ce que le reste du middleware évite.
+                try
+                {
+                    await next(context);
+                }
+                catch (Exception exception) when (UnwrapApplicative(exception) is { } applicative)
+                {
+                    ExceptionDispatchInfo.Capture(applicative).Throw();
+                }
             }
 
             // ── Le client est parti ───────────────────────────────────────────
@@ -114,6 +129,36 @@ namespace NutritionApi.Api.Middleware
 
                 await WriteProblem(context, 500, "Erreur interne", "Une erreur interne est survenue.");
             }
+        }
+
+        /// <summary>
+        /// Cherche, dans la chaîne des exceptions internes, une exception d'Application que la suite
+        /// du middleware sait traduire.
+        /// </summary>
+        /// <param name="exception">Exception remontée par le pipeline.</param>
+        /// <returns>
+        /// L'exception applicative enveloppée, ou <c>null</c> s'il n'y en a pas — auquel cas la chaîne
+        /// de <c>catch</c> traite l'exception d'origine, exception applicative nue comprise.
+        /// </returns>
+        /// <remarks>
+        /// Seules les exceptions <b>internes</b> sont examinées : si l'exception de premier niveau est
+        /// déjà applicative, la relancer ferait perdre sa pile pour rien.
+        /// </remarks>
+        private static Exception? UnwrapApplicative(Exception exception)
+        {
+            for (var inner = exception.InnerException; inner is not null; inner = inner.InnerException)
+            {
+                if (inner is NotFoundException
+                          or ConflictException
+                          or ForbiddenException
+                          or UnprocessableException
+                          or ServiceUnavailableException)
+                {
+                    return inner;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
