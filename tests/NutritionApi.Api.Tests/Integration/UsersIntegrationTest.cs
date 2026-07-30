@@ -173,6 +173,35 @@ public class UsersIntegrationTest
         _factory.WeightEntries.Verify(r => r.AddAsync(It.IsAny<WeightEntry>()), Times.Never);
     }
 
+    /// <summary>
+    /// IT-USR-22 — sans date fournie, la pesée est datée du jour, et le doublon est refusé comme
+    /// s'il avait été daté explicitement.
+    /// </summary>
+    /// <remarks>
+    /// Ce cas manquait, et son absence masquait un défaut : le contrôle de doublon était conditionné
+    /// à la présence de <c>MeasuredAt</c>, alors que la date du jour est appliquée par défaut. Deux
+    /// appels sans date créaient donc deux pesées le même jour, sans erreur — le chemin qu'emprunte
+    /// naturellement une application mobile. Voir NTR-145.
+    /// </remarks>
+    [Fact]
+    public async Task IT_USR_22_PeseeSansDateDejaEnregistreeCeJour_Retourne409()
+    {
+        var utilisateur = GivenUtilisateurCourant();
+        var aujourdhui = DateOnly.FromDateTime(DateTime.UtcNow);
+
+        _factory.WeightEntries
+            .Setup(r => r.GetByUserIdAndDateAsync(utilisateur.Id, aujourdhui))
+            .ReturnsAsync(new WeightEntry(utilisateur.Id, 78f, aujourdhui));
+
+        // Aucune date dans la requête : c'est le service qui doit résoudre « aujourd'hui » avant de
+        // contrôler, et non sauter le contrôle.
+        var reponse = await _factory.CreateAuthenticatedClient()
+            .PostAsJsonAsync(Pesees, new AddWeightEntryRequest(77.4f, null));
+
+        Assert.Equal(HttpStatusCode.Conflict, reponse.StatusCode);
+        _factory.WeightEntries.Verify(r => r.AddAsync(It.IsAny<WeightEntry>()), Times.Never);
+    }
+
     [Fact]
     public async Task IT_USR_09_HistoriqueDesPesees_Retourne200()
     {

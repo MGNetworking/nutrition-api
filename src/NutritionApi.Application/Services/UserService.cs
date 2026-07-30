@@ -99,17 +99,17 @@ public class UserService : IUserService
     {
         var user = await GetUserIdOrThrowAsync(userId);
 
-        if (request.MeasuredAt is not null)
-        {
-            var existing = await _weightEntryRepository.GetByUserIdAndDateAsync(userId, request.MeasuredAt.Value);
-            if (existing is not null)
-                throw new ConflictException("A weight entry already exists for this date.");
-        }
+        // La date effective est résolue avant le contrôle, et non après : conditionner celui-ci à
+        // MeasuredAt laissait passer les appels sans date, qui créaient un doublon silencieux sur
+        // la journée courante. La contrainte d'unicité en base ferme définitivement ce chemin ;
+        // ce contrôle reste pour renvoyer un 409 explicite plutôt qu'une erreur de persistance.
+        var measuredAt = request.MeasuredAt ?? DateOnly.FromDateTime(DateTime.UtcNow);
 
-        var weightEntry = new WeightEntry(
-            userId,
-            request.Weight,
-            request.MeasuredAt ?? DateOnly.FromDateTime(DateTime.UtcNow));
+        var existing = await _weightEntryRepository.GetByUserIdAndDateAsync(userId, measuredAt);
+        if (existing is not null)
+            throw new ConflictException("A weight entry already exists for this date.");
+
+        var weightEntry = new WeightEntry(userId, request.Weight, measuredAt);
 
         await _weightEntryRepository.AddAsync(weightEntry);
         await _unitOfWork.SaveChangesAsync();
