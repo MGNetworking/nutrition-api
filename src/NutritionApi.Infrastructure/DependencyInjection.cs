@@ -28,13 +28,20 @@ public static class InfrastructureExtensions
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        // L'intercepteur traduit les échecs PostgreSQL en exceptions applicatives, en un seul point
-        // pour toutes les commandes : violation d'unicité en conflit, base injoignable en
-        // indisponibilité. Sans lui, la couche API devrait connaître Npgsql pour les distinguer.
+        // Les intercepteurs traduisent les échecs PostgreSQL en exceptions applicatives, en un seul
+        // point : violation d'unicité en conflit, base injoignable en indisponibilité. Sans eux, la
+        // couche API devrait connaître Npgsql pour les distinguer.
+        //
+        // Il en faut deux, car l'échec ne survient pas toujours au même endroit :
+        //   - DatabaseExceptionInterceptor      → échec d'une commande (serveur joignable)
+        //   - DatabaseConnectionExceptionInterceptor → échec d'ouverture de connexion (serveur arrêté)
+        // Le second couvre le cas qu'IT-EXT-14 a révélé : sans lui, une base arrêtée repartait en 500.
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(connectionString)
                    .UseSnakeCaseNamingConvention()
-                   .AddInterceptors(new DatabaseExceptionInterceptor()));
+                   .AddInterceptors(
+                        new DatabaseExceptionInterceptor(),
+                        new DatabaseConnectionExceptionInterceptor()));
 
         // L'unité de travail est le DbContext lui-même — même instance dans la portée de la requête
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
