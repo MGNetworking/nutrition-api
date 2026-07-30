@@ -34,15 +34,29 @@ public sealed class JobMonitoringService : IJobMonitoringService
     public async Task<List<HangfireJobResponse>> GetJobsStatusAsync()
     {
         const string sql = """
+            with recurring as (
+                select
+                    substring(key from 'recurring-job:(.*)')          as job_name,
+                    max(value) filter (where field = 'LastExecution') as last_run,
+                    max(value) filter (where field = 'NextExecution') as next_run,
+                    max(value) filter (where field = 'LastJobState')  as last_job_state,
+                    max(value) filter (where field = 'LastJobId')     as last_job_id
+                from hangfire.hash
+                where key like 'recurring-job:%'
+                group by key
+            )
             select
-                substring(key from 'recurring-job:(.*)')          as job_name,
-                max(value) filter (where field = 'LastExecution') as last_run,
-                max(value) filter (where field = 'NextExecution') as next_run,
-                max(value) filter (where field = 'LastJobState')  as status
-            from hangfire.hash
-            where key like 'recurring-job:%'
-            group by key
-            order by job_name;
+                r.job_name,
+                r.last_run,
+                r.next_run,
+                -- L'état de la ligne de job prime sur LastJobState : Hangfire n'écrit pas ce champ
+                -- lors d'un déclenchement manuel, alors que la ligne porte l'état réel. Repli sur
+                -- LastJobState quand le job a été purgé de l'historique.
+                coalesce(j.statename, r.last_job_state) as status
+            from recurring r
+            left join hangfire.job j
+                   on j.id = nullif(r.last_job_id, '')::bigint
+            order by r.job_name;
             """;
 
         var jobs = new List<HangfireJobResponse>();
@@ -59,7 +73,7 @@ public sealed class JobMonitoringService : IJobMonitoringService
             var lastRun = ParseHangfireDate(reader.IsDBNull(1) ? null : reader.GetString(1));
             var nextRun = ParseHangfireDate(reader.IsDBNull(2) ? null : reader.GetString(2));
 
-            // LastJobState absent = job enregistré mais jamais exécuté → planifié
+            // Ni état de run, ni LastJobState → job enregistré mais jamais exécuté
             var status = reader.IsDBNull(3) ? "Scheduled" : reader.GetString(3);
 
             jobs.Add(new HangfireJobResponse(jobName, lastRun, nextRun, status));
