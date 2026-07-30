@@ -45,6 +45,21 @@
           }
         }
       ]
+    },
+
+    {
+      "clientId": "nutrition-api-service",
+      "name": "Nutrition API — compte de service",
+      "description": "Client confidentiel utilisé par l'API pour agir sur le realm : suppression des comptes par la purge RGPD. Distinct de nutrition-api, qui est public et ne peut donc pas s'authentifier par client_credentials.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-service-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": []
     }
   ],
 
@@ -102,6 +117,15 @@
         }
       ],
       "realmRoles": ["user", "admin"]
+    },
+
+    {
+      "username": "service-account-nutrition-api-service",
+      "enabled": true,
+      "serviceAccountClientId": "nutrition-api-service",
+      "clientRoles": {
+        "realm-management": ["view-users", "manage-users"]
+      }
     }
   ]
 }
