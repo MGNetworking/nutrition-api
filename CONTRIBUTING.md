@@ -36,14 +36,20 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 
 | PR | Workflow | Ce qui s'exécute |
 |----|----------|-----------------|
-| `feature/* → dev` | `ci-unit.yml` | Build + tests unitaires |
-| `main → dev` (sync) | `ci-unit.yml` | **ignoré** (`github.head_ref != 'main'`) |
+| `feature/* → dev` | `ci-unit.yml` | Build + tests de niveaux 1 et 2 (`--filter "Level!=3"`) |
+| `feature/* → dev` | `ci-integration.yml` | Pile docker-compose + tests de niveau 3 (`--filter "Level=3"`) |
+| `main → dev` (sync) | `ci-unit.yml`, `ci-integration.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → prod` | `ci-deploy.yml` | Build Release + déploiement VPS |
 | `main → prod` (sync) | `ci-deploy.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → main` | `ci-release.yml` | Build + tests unitaires + couverture + rapport PR |
 | Release Please PR | `ci-release.yml` | **ignoré** (`github.actor != 'github-actions[bot]'`) |
 
 > Les PRs de synchronisation `main → dev` et `main → prod` ne déclenchent pas le CI — le code vient de `main` qui est déjà testé. Les PRs automatiques de Release Please sont également ignorées pour éviter les boucles.
+
+> `ci-unit.yml` et `ci-integration.yml` tournent **en parallèle** sur une PR vers `dev`, et leurs
+> périmètres sont disjoints : les filtres `Level!=3` et `Level=3` garantissent qu'aucun test n'est
+> joué deux fois ni oublié. `ci-integration.yml` appelle `./scripts/test-integration.sh`, le même
+> script qu'en local — la CI ne déclare aucun service qui lui soit propre.
 
 ### Smoke tests — feuille de route
 
@@ -113,6 +119,19 @@ Le script est idempotent — le relancer sur un environnement déjà démarré n
 ./scripts/dev-down.sh --volumes    # arrête les services et supprime les données
 ./scripts/dev-reset.sh             # repart d'une base vierge (migrations + seed rejoués)
 ```
+
+### Lancer les tests de niveau 3
+
+```bash
+./scripts/test-integration.sh              # monte la pile puis exécute les tests Level=3
+./scripts/test-integration.sh --no-build   # réutilise la compilation existante
+```
+
+Même pile que `dev-up.sh`, mêmes healthchecks. Deux différences : pas de `seed-dev.sql` — chaque test
+crée sa propre base éphémère `nutrition_test_*` et sème ses données —, et pas de `dotnet ef` : les
+migrations sont appliquées par la fabrique de tests. `nutrition_dev` n'est jamais touchée.
+
+Les arguments passés au script sont transmis tels quels à `dotnet test`.
 
 ### Services et comptes
 

@@ -2,6 +2,7 @@
 
 [![CI — Tests unitaires](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-unit.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-unit.yml)
 [![CI — Release](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml)
+[![CI — Tests d'intégration externe](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-integration.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-integration.yml)
 [![Coverage](https://img.shields.io/badge/coverage-à_configurer-lightgrey)](#tests-automatisés)
 [![Quality Gate](https://img.shields.io/badge/SonarCloud-à_configurer-lightgrey)](https://sonarcloud.io)
 [![Dependabot](https://img.shields.io/badge/Dependabot-à_configurer-lightgrey)](https://github.com/MGNetworking/nutrition-api/network/updates)
@@ -129,6 +130,17 @@ Swagger est alors disponible sur [http://localhost:5099/swagger](http://localhos
 ./scripts/dev-down.sh --volumes    # supprime les données
 ./scripts/dev-reset.sh             # repart d'une base vierge
 ```
+
+**Tests d'intégration externe (niveau 3)**
+
+```bash
+./scripts/test-integration.sh                 # monte la pile puis lance les tests Level=3
+./scripts/test-integration.sh --no-build      # réutilise la compilation existante
+```
+
+Le script monte la même pile que `dev-up.sh` et attend les trois healthchecks, mais ne charge pas
+`seed-dev.sql` : chaque test crée sa propre base éphémère et sème ses données. Voir
+[Écrire un test de niveau 3](https://mgnetworking.github.io/docs-nutrition/backend/qualite/tests-niveau-3/).
 
 ---
 
@@ -297,9 +309,16 @@ NutritionApi.Api.Tests.Integration.ApiFactoryTest.ProtectedEndpoint_WithoutIdent
 ```
 
 Tous les tests de niveau 2 vivent dans le namespace `NutritionApi.Api.Tests.Integration`. C'est
-**cette convention, et elle seule**, qui rend la sélection possible : il n'existe aucun attribut ni
-catégorie qui les distinguerait autrement. D'où la règle — un test de niveau 2 se place dans
+cette convention qui rend leur sélection possible. D'où la règle — un test de niveau 2 se place dans
 `Integration/`, sans exception.
+
+**Le niveau 3 se sélectionne autrement** : par le trait `[Trait("Level", "3")]`, porté par chaque
+classe de `NutritionApi.Integration.Tests`. Le filtre devient alors `--filter "Level=3"`, et son
+inverse `--filter "Level!=3"` écarte ces tests du développement courant.
+
+Pourquoi un trait et non le namespace : ces tests exigent PostgreSQL, Redis et Keycloak réels. Un
+test de niveau 3 rangé par erreur dans un autre projet resterait ainsi exclu de la CI unitaire, là
+où un filtre par namespace le laisserait passer — et faire échouer une CI sans Docker.
 
 L'intérêt pratique est double : lancer les tests d'intégration seuls quand on travaille dessus, et
 surtout **les exclure** pendant le développement courant, puisqu'ils démarrent l'API et coûtent
@@ -309,7 +328,8 @@ plusieurs dizaines de secondes là où les tests unitaires se comptent en millis
 
 Déclarés dans `tests/coverage.runsettings`, en ligne **et** en branche. Le workflow
 `.github/workflows/ci-unit.yml` lance `dotnet test` avec ce fichier de réglages : les seuils sont
-donc contrôlés à chaque pull request vers `dev`.
+donc contrôlés à chaque pull request vers `dev`. Ce workflow exclut le niveau 3 (`--filter
+"Level!=3"`), exécuté séparément par `ci-integration.yml`.
 
 | Couche | Seuil |
 |---|---|
@@ -335,12 +355,14 @@ nutrition-api/
 │   ├── NutritionApi.Application/      Services, DTOs, interfaces
 │   ├── NutritionApi.Infrastructure/   EF Core, migrations, repositories, cache, jobs
 │   └── NutritionApi.Api/              Controllers, middlewares, Program.cs
-├── tests/                             Un projet de tests par couche + coverage.runsettings
+├── tests/                             Un projet de tests par couche, un pour le niveau 3,
+│                                      + coverage.runsettings
 ├── scripts/                           Scripts d'environnement (dev-up, dev-down, dev-reset,
-│                                      docker-up, lib.sh)
+│                                      docker-up, test-integration, lib.sh)
 ├── keycloak/                          realm-export.json — realm, client, rôles, comptes de test
 ├── postman/                           Collection et environnements Postman
-├── .github/workflows/                 CI — tests unitaires, release, déploiement, Release Please
+├── .github/workflows/                 CI — tests unitaires, intégration externe, release,
+│                                      déploiement, Release Please
 ├── .claude/                           Règles et skills Claude Code
 ├── nutrition-api.slnx                 Solution
 ├── docker-compose.yml                 PostgreSQL, Redis, Keycloak (+ API sous profil « full »)
