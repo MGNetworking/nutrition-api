@@ -57,16 +57,32 @@ public sealed class KeycloakTokens : IDisposable
 
     private readonly HttpClient _client = new();
 
+    /// <summary>Client public de l'application — celui dont les jetons sont acceptés par l'API.</summary>
+    public const string DefaultClient = "nutrition-api";
+
+    /// <summary>
+    /// Client de test émettant des jetons valides une seconde. Le realm impose 1800 s : sans lui,
+    /// IT-EXT-18 devrait attendre trente minutes.
+    /// </summary>
+    public const string ShortLivedClient = "nutrition-api-tests-shortlived";
+
+    /// <summary>
+    /// Client de test sans mapper d'audience — ses jetons ne portent pas <c>nutrition-api</c> dans
+    /// leur claim <c>aud</c>, et l'API doit donc les refuser.
+    /// </summary>
+    public const string NoAudienceClient = "nutrition-api-tests-no-audience";
+
     /// <summary>Récupère un jeton d'accès pour un compte du realm.</summary>
     /// <param name="username">Nom du compte, par exemple <see cref="AdminUser"/>.</param>
+    /// <param name="clientId">Client émetteur — <see cref="DefaultClient"/> par défaut.</param>
     /// <returns>Le jeton d'accès brut, à porter en <c>Authorization: Bearer</c>.</returns>
     /// <exception cref="InvalidOperationException">Keycloak est injoignable ou a refusé la demande.</exception>
-    public async Task<string> GetAccessTokenAsync(string username)
+    public async Task<string> GetAccessTokenAsync(string username, string? clientId = null)
     {
         var form = new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["grant_type"] = "password",
-            ["client_id"] = "nutrition-api",
+            ["client_id"] = clientId ?? DefaultClient,
             ["username"] = username,
             ["password"] = Password,
         });

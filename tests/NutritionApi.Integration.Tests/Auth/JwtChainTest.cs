@@ -58,6 +58,73 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     }
 
     /// <summary>
+    /// IT-EXT-18 — un jeton réellement expiré est refusé.
+    /// </summary>
+    /// <remarks>
+    /// Ce cas figurait au recensement sous IT-AUTH-02, au niveau 2, où il ne pouvait pas être écrit :
+    /// <c>TestAuthHandler</c> y remplace le composant qui vérifie l'expiration. Il n'avait jamais été
+    /// repris ici.
+    /// <para>
+    /// Le jeton est <b>authentique</b> — émis par Keycloak, correctement signé, portant la bonne
+    /// audience. Seule sa date d'expiration est dépassée. Un jeton forgé échouerait sur la signature
+    /// et ne prouverait rien de <c>ValidateLifetime</c>.
+    /// </para>
+    /// <para>
+    /// Le realm impose 1800 secondes de durée de vie ; le client <c>nutrition-api-tests-shortlived</c>
+    /// la ramène à une seconde par son attribut <c>access.token.lifespan</c>.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task IT_EXT_18_Jeton_expire_est_refuse()
+    {
+        await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
+
+        var jeton = await factory.Tokens.GetAccessTokenAsync(
+            KeycloakTokens.StandardUser, KeycloakTokens.ShortLivedClient);
+
+        // La tolérance d'horloge par défaut de la validation JWT est de 5 minutes : elle est ramenée
+        // à zéro dans la fabrique, sans quoi aucun jeton ne pourrait expirer à l'échelle d'un test.
+        await Task.Delay(TimeSpan.FromSeconds(3));
+
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", jeton);
+
+        var response = await client.GetAsync("/api/v1/users/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
+    /// IT-EXT-19 — un jeton dont l'audience ne désigne pas cette API est refusé.
+    /// </summary>
+    /// <remarks>
+    /// Ce que le test protège : sans contrôle de l'audience, un jeton légitimement obtenu pour une
+    /// autre API serait accepté par celle-ci. C'est le problème du <i>confused deputy</i> — le jeton
+    /// est valide et signé, mais il ne nous était pas destiné.
+    /// <para>
+    /// Le client <c>nutrition-api-tests-no-audience</c> ne déclare aucun mapper d'audience : ses
+    /// jetons ne portent pas <c>nutrition-api</c> dans leur claim <c>aud</c>.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task IT_EXT_19_Jeton_sans_l_audience_attendue_est_refuse()
+    {
+        await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
+
+        var jeton = await factory.Tokens.GetAccessTokenAsync(
+            KeycloakTokens.StandardUser, KeycloakTokens.NoAudienceClient);
+
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new("Bearer", jeton);
+
+        var response = await client.GetAsync("/api/v1/users/me");
+
+        // 401 et non 403 : l'authentification elle-même échoue, la requête n'atteint jamais
+        // l'autorisation ni la résolution de l'utilisateur.
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    /// <summary>
     /// Garantit la présence de la ligne <c>User</c> correspondant au sujet du jeton.
     /// </summary>
     /// <param name="keycloakId">Identifiant Keycloak porté par le jeton.</param>

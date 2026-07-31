@@ -1,5 +1,6 @@
 namespace NutritionApi.Integration.Tests.Fixtures;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -88,6 +89,15 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<IOffDumpReader>();
             services.AddSingleton<IOffDumpReader>(new ListDumpReader(DumpLines));
+
+            // La tolérance d'horloge par défaut de la validation JWT est de cinq minutes : elle
+            // absorbe les décalages entre le serveur d'identité et l'API. Un jeton expiré depuis une
+            // seconde resterait donc accepté, et IT-EXT-18 ne pourrait rien prouver sans attendre
+            // plus de cinq minutes. Elle est annulée ici, et ici seulement — la production conserve
+            // la valeur par défaut.
+            services.Configure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme,
+                options => options.TokenValidationParameters.ClockSkew = TimeSpan.Zero);
         });
     }
 

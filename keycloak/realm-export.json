@@ -60,6 +60,48 @@
       "directAccessGrantsEnabled": false,
       "redirectUris": [],
       "webOrigins": []
+    },
+
+    {
+      "clientId": "nutrition-api-tests-shortlived",
+      "name": "Tests — jetons à durée de vie très courte",
+      "description": "Réservé aux tests de niveau 3 (IT-EXT-18). Émet des jetons valides une seconde, ce que le realm ne permet pas : accessTokenLifespan y vaut 1800 s. Le mapper d'audience est conservé, sinon le rejet viendrait de l'audience et non de l'expiration.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "1"
+      },
+      "redirectUris": [],
+      "webOrigins": [],
+      "protocolMappers": [
+        {
+          "name": "audience-nutrition-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "nutrition-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+
+    {
+      "clientId": "nutrition-api-tests-no-audience",
+      "name": "Tests — jetons sans l'audience attendue",
+      "description": "Réservé aux tests de niveau 3 (IT-EXT-19). Aucun mapper d'audience : les jetons émis ne portent pas nutrition-api dans leur claim aud, et l'API doit les refuser. Sans ce contrôle, un jeton obtenu pour une autre API serait accepté.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
     }
   ],
 
