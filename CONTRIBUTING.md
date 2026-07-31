@@ -51,43 +51,25 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 > joué deux fois ni oublié. `ci-integration.yml` appelle `./scripts/test-integration.sh`, le même
 > script qu'en local — la CI ne déclare aucun service qui lui soit propre.
 
-### Smoke tests — feuille de route
+### Smoke tests
 
-Les smoke tests vérifient que **le système déployé est vivant et cohérent**, pas la logique métier.
-Ils s'exécuteront dans `ci-deploy.yml` après le déploiement VPS, en 3 niveaux progressifs.
+Les smoke tests vérifient que **le système déployé est vivant et cohérent**, pas la logique métier —
+celle-ci est couverte par les niveaux inférieurs. Ils s'exécutent dans `ci-deploy.yml`, après le
+déploiement.
 
-#### Niveau 1 — À implémenter avec l'API layer (NTR-4)
+Ils se répartissent en trois paliers, du moins exigeant au plus complet :
 
-Prérequis : endpoint `/health` disponible dans l'API.
+| Palier | Prérequis | Ce qui est vérifié |
+|---|---|---|
+| 1 | endpoint `/health` | l'application démarre et répond ; le document OpenAPI est accessible ; un appel non authentifié donne 401 et non 500 |
+| 2 | PostgreSQL, Redis et Keycloak déployés | `/health/ready` confirme la connectivité ; le serveur d'identité répond |
+| 3 | compte d'exploitation provisionné | scénario end-to-end léger : créer un profil, un plan, un régime, lire un bilan |
 
-```
-GET /health                    → 200 OK
-GET /swagger/v1/swagger.json   → 200 OK  (OpenAPI accessible)
-GET /api/users/xxx             → 401 Unauthorized  (auth middleware actif, pas 500)
-```
+Le palier 3 s'authentifie avec un **compte d'exploitation** dédié : un client Keycloak à service
+account, et sa ligne `User` en base. Sans cette ligne, `UserResolutionMiddleware` renvoie 401 —
+indiscernable d'un rejet de jeton, ce qui priverait le smoke test de tout pouvoir de diagnostic.
 
-Pas de base de données requise — vérifie uniquement que l'app démarre et répond.
-
-#### Niveau 2 — À implémenter avec la couche Infrastructure (NTR-3) + VPS loué
-
-Prérequis : PostgreSQL, Redis et Keycloak déployés sur le VPS.
-
-```
-GET /health/ready              → 200 OK  (connectivité PostgreSQL + Redis confirmée)
-POST /api/diets                → 401 Unauthorized  (Keycloak répond, pas 500)
-```
-
-#### Niveau 3 — À implémenter avant v1.0.0 (MVP)
-
-Prérequis : token de test dédié configuré dans les secrets GitHub (`TEST_JWT_TOKEN`).
-
-Scénario end-to-end léger :
-```
-1. POST /api/users/{id}/profile    → 200  (créer un profil)
-2. POST /api/diet-plans            → 201  (créer un DietPlan)
-3. POST /api/diets                 → 201  (lancer une Diet)
-4. GET  /api/diets/{id}/bilan      → 200  (bilan sans erreur 5xx)
-```
+> Aucun palier n'est implémenté : `Program.cs` ne déclare aucun health check.
 
 ---
 
@@ -119,6 +101,17 @@ Le script est idempotent — le relancer sur un environnement déjà démarré n
 ./scripts/dev-down.sh --volumes    # arrête les services et supprime les données
 ./scripts/dev-reset.sh             # repart d'une base vierge (migrations + seed rejoués)
 ```
+
+### Lancer l'API conteneurisée
+
+```bash
+./scripts/docker-up.sh
+```
+
+Monte la pile **avec l'API dans un conteneur**, sur le port 5100 et la configuration
+`appsettings.Docker.json`. À utiliser pour valider l'image ou reproduire le comportement de
+production ; le développement quotidien passe par `dev-up.sh` et `dotnet run`, qui laissent le
+débogueur attaché.
 
 ### Lancer les tests de niveau 3
 
@@ -234,28 +227,29 @@ La PR doit :
 Ouvrir une PR `dev → prod` une fois les features validées sur `dev`.
 
 Le merge déclenche `ci-deploy.yml` :
-1. Build Release (validation)
-2. Déploiement automatique sur le VPS *(activé quand le VPS sera loué)*
-3. Smoke tests post-déploiement *(activés progressivement — voir feuille de route ci-dessus)*
+
+1. Build Release
+2. Déploiement sur le VPS — **étapes commentées**, faute de cluster et de registre d'images
+3. Smoke tests post-déploiement — **non implémentés**, voir la section ci-dessus
 
 ---
 
 ## Workflow dev → main (release)
 
-Les merges vers `main` correspondent à des **milestones produit** (fin d'une ou plusieurs Epics).
+La PR `dev → main` doit être mergée avec **« Create a merge commit »** et non en squash, pour
+préserver l'historique et éviter la divergence entre `dev` et `main`.
 
-La PR `dev → main` doit être mergée avec **"Create a merge commit"** (pas squash) pour préserver l'historique et éviter la divergence entre `dev` et `main`.
+Le numéro de version et le CHANGELOG sont produits par
+[Release Please](https://github.com/googleapis/release-please) à partir des commits conventionnels :
 
-Versionnage sémantique :
+| Préfixe de commit | Effet sur la version |
+|---|---|
+| `fix:` | incrémente le correctif — `0.2.0` → `0.2.1` |
+| `feat:` | incrémente le mineur — `0.2.1` → `0.3.0` |
+| `feat!:` ou `BREAKING CHANGE:` | incrémente le majeur — `0.3.0` → `1.0.0` |
+| `docs:`, `test:`, `chore:`, `refactor:` | aucun |
 
-| Milestone | Version |
-|-----------|---------|
-| Domain + Application (NTR-1 + NTR-2) | `v0.1.0` |
-| API layer (NTR-4) | `v0.2.0` |
-| Infrastructure layer (NTR-3) | `v0.3.0` |
-| MVP complet | `v1.0.0` |
-
-Le CHANGELOG est généré automatiquement par [Release Please](https://github.com/googleapis/release-please) à partir des commits conventionnels.
+C'est donc le contenu des commits qui détermine la version, sans intervention manuelle.
 
 ---
 
