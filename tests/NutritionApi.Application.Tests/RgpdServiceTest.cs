@@ -9,6 +9,7 @@ using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Domain.ValueObjects;
 
+[Trait("Level", "1")]
 public class RgpdServiceTest
 {
     private readonly Mock<IUserRepository> _userRepositoryMock = new();

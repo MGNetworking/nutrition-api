@@ -10,6 +10,7 @@ using StackExchange.Redis;
 using System.Net;
 using System.Text.Json;
 
+[Trait("Level", "1")]
 public class RedisFoodCacheServiceTest
 {
     private const string PouletKey = "food:search:v1:poulet";

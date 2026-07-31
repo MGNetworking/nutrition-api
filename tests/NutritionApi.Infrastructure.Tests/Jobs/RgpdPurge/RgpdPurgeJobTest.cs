@@ -9,6 +9,7 @@ using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 
+[Trait("Level", "1")]
 public class RgpdPurgeJobTest
 {
     private static readonly DateTimeOffset Now = new(2026, 3, 1, 3, 30, 0, TimeSpan.Zero);

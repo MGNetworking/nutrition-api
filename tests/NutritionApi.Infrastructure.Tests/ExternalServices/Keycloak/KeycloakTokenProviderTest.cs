@@ -7,6 +7,7 @@ using NutritionApi.Infrastructure.ExternalServices.Keycloak;
 using System.Net;
 using System.Text;
 
+[Trait("Level", "1")]
 public class KeycloakTokenProviderTest
 {
     private const string TokenUrl = "https://keycloak.test/realms/nutrition/protocol/openid-connect/token";

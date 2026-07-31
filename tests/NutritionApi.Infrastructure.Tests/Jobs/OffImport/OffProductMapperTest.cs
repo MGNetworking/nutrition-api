@@ -3,6 +3,7 @@ namespace NutritionApi.Infrastructure.Tests.Jobs.OffImport;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Infrastructure.Jobs.OffImport;
 
+[Trait("Level", "1")]
 public class OffProductMapperTest
 {
     // ---------------------------------------------------------------------

@@ -9,6 +9,7 @@ using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.Infrastructure.Scheduling;
 
+[Trait("Level", "1")]
 public class RecurringJobRegistrationServiceTest
 {
     private readonly Mock<IRecurringJobManager> _recurringJobs = new(MockBehavior.Strict);

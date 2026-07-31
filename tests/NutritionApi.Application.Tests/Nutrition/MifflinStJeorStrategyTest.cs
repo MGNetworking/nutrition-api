@@ -4,6 +4,7 @@ using NutritionApi.Domain.Enums;
 
 namespace NutritionApi.Application.Tests.Nutrition;
 
+[Trait("Level", "1")]
 public class MifflinStJeorStrategyTest
 {
     private readonly MifflinStJeorStrategy _strategy = new();

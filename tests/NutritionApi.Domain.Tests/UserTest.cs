@@ -3,6 +3,7 @@ using NutritionApi.Domain.Enums;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class UserTest
 {
     float Height = 100;

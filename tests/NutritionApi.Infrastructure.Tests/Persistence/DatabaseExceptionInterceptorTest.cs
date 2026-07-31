@@ -12,6 +12,7 @@ using System.Net.Sockets;
 /// Seule la traduction est testée ici, pas son branchement sur EF Core : elle est extraite dans une
 /// méthode pure précisément pour être éprouvable sans base réelle. Le branchement relève du niveau 3.
 /// </remarks>
+[Trait("Level", "1")]
 public class DatabaseExceptionInterceptorTest
 {
     [Fact]

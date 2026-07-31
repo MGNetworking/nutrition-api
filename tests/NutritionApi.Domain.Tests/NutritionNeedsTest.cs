@@ -2,6 +2,7 @@ using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class NutritionNeedsTest
 {
     static MacroDistribution DefaultMacros() => new(20, 50, 30);

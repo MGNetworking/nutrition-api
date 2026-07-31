@@ -2,6 +2,7 @@ using NutritionApi.Domain.Entity;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class SavedFoodItemTest
 {
     // --- Constructeur ---

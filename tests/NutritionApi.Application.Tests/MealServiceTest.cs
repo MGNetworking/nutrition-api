@@ -10,6 +10,7 @@ using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Domain.ValueObjects;
 
+[Trait("Level", "1")]
 public class MealServiceTest
 {
     private readonly Mock<IMealRepository> _mealRepositoryMock = new(MockBehavior.Strict);

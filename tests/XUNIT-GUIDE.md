@@ -35,17 +35,44 @@
 
 ### Structure de projet recommandée
 
+Le projet distingue **quatre niveaux de tests**. Le rangement les sépare, et un marqueur les rend
+sélectionnables.
+
 ```
 tests/
-├── NutritionApi.Domain.Tests/
-│   └── DietPlanTest.cs
-├── NutritionApi.Application.Tests/
-│   ├── DietPlansServiceTest.cs
-│   ├── SubscriptionGuardTest.cs
-│   └── UserServiceTest.cs
-└── NutritionApi.Infrastructure.Tests/
-    └── (Testcontainers — intégration BDD)
+├── NutritionApi.Domain.Tests/               niveau 1
+├── NutritionApi.Application.Tests/          niveau 1
+├── NutritionApi.Infrastructure.Tests/       niveau 1 — code pur uniquement
+├── NutritionApi.Api.Tests/
+│   ├── Level1/                              controllers et middlewares isolés
+│   └── Level2/                              pipeline HTTP, doublures aux frontières
+│       └── Fixtures/
+└── NutritionApi.ExternalIntegration.Tests/  niveau 3 — PostgreSQL, Redis, Keycloak réels
+    └── Fixtures/
 ```
+
+**Chaque classe de test porte son niveau :**
+
+```csharp
+[Trait("Level", "1")]
+public class UserServiceTest { … }
+```
+
+C'est ce marqueur qui pilote les filtres, pas le dossier :
+
+```bash
+dotnet test --filter "Level=1"     # unitaires
+dotnet test --filter "Level=3"     # exige la pile docker-compose
+dotnet test --filter "Level!=3"    # tout ce qui tourne sans Docker
+```
+
+Le dossier dit où ranger, le marqueur dit quoi exécuter. Les deux doivent concorder, mais c'est le
+marqueur qui fait foi : un test mal rangé reste correctement filtré.
+
+> **Le niveau 3 ne vit pas dans `Infrastructure.Tests`**, malgré les apparences. Ses fixtures
+> reposent sur `WebApplicationFactory<Program>`, donc sur la couche API : les y placer obligerait le
+> projet de tests d'Infrastructure à référencer l'API, inversant la dépendance que l'architecture
+> tient. D'où un projet distinct.
 
 ### Configuration xUnit (xunit.runner.json)
 
@@ -86,13 +113,29 @@ public async Task CreateAsync_ShouldReturnDietPlanResponse_WhenRequestIsValid()
 
 ### Nommage des tests
 
-Convention : `Méthode_Résultat_Condition`
+**Niveau 1** — `Méthode_Résultat_Condition`. Le test nomme la **méthode** qu'il éprouve.
 
 ```
 CreateAsync_ShouldReturnDietPlanResponse_WhenRequestIsValid
 CreateAsync_ShouldThrow_WhenUserIdIsEmpty
 GetByIdAsync_ShouldReturnNull_WhenPlanDoesNotExist
 ```
+
+**Niveaux 2 et 3** — `IT_XXX_NN_Scénario_RésultatAttendu`. Le test nomme un **cas du recensement**,
+pas une méthode : plusieurs classes de production peuvent être traversées.
+
+```
+IT_ADM_01_SansRoleAdmin_Retourne403
+IT_USR_08_PeseeDejaEnregistreeALaMemeDate_Retourne409
+IT_EXT_14_BaseInjoignable_Retourne503
+IT_JOB_02_JobJamaisExecute_RetourneScheduled
+```
+
+Le préfixe est l'identifiant du recensement : c'est la clé de correspondance entre le test et le cas
+recensé. Sans lui, plus rien ne relie les deux.
+
+**Le résultat attendu termine toujours le nom.** `Retourne403`, `LeveConflictException`,
+`RetourneListeVide` — un rapport de test doit se lire sans ouvrir les fichiers.
 
 ---
 

@@ -304,20 +304,27 @@ Le rapport est généré dans `coverage/report/index.html`.
 test, **namespace compris**, et `~` signifie « contient » :
 
 ```
-NutritionApi.Api.Tests.Integration.ApiFactoryTest.ProtectedEndpoint_WithoutIdentity_Returns401
+NutritionApi.Api.Tests.Level2.ApiFactoryTest.ProtectedEndpoint_WithoutIdentity_Returns401
 └──────────────── namespace ─────────────────┘ └── classe ──┘ └────────── méthode ──────────┘
 ```
 
-Tous les tests de niveau 2 vivent dans le namespace `NutritionApi.Api.Tests.Integration`. C'est
-cette convention qui rend leur sélection possible. D'où la règle — un test de niveau 2 se place dans
-`Integration/`, sans exception.
+La sélection par namespace reste possible, mais ce n'est plus le mécanisme principal.
 
-**Le niveau 3 se sélectionne autrement** : par le trait `[Trait("Level", "3")]`, porté par chaque
-classe de `NutritionApi.Integration.Tests`. Le filtre devient alors `--filter "Level=3"`, et son
-inverse `--filter "Level!=3"` écarte ces tests du développement courant.
+**Chaque test porte son niveau** — `[Trait("Level", "1")]` à `[Trait("Level", "3")]`, posé sur la
+classe. C'est ce marqueur qui pilote les filtres, et lui seul :
 
-Pourquoi un trait et non le namespace : ces tests exigent PostgreSQL, Redis et Keycloak réels. Un
-test de niveau 3 rangé par erreur dans un autre projet resterait ainsi exclu de la CI unitaire, là
+```bash
+dotnet test --filter "Level=1"     # unitaires
+dotnet test --filter "Level=2"     # pipeline HTTP, doublures aux frontières
+dotnet test --filter "Level=3"     # PostgreSQL, Redis et Keycloak réels
+dotnet test --filter "Level!=3"    # tout ce qui n'exige pas Docker
+```
+
+Le rangement le double : un dossier par niveau dans `Api.Tests` (`Level1/`, `Level2/`), et un projet
+dédié pour le niveau 3.
+
+Pourquoi un marqueur plutôt que le seul namespace : un test de niveau 3 rangé par erreur ailleurs
+resterait exclu de la CI unitaire, là
 où un filtre par namespace le laisserait passer — et faire échouer une CI sans Docker.
 
 L'intérêt pratique est double : lancer les tests d'intégration seuls quand on travaille dessus, et

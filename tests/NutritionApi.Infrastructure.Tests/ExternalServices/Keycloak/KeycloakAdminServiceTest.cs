@@ -8,6 +8,7 @@ using NutritionApi.Application.Exceptions;
 using NutritionApi.Infrastructure.ExternalServices.Keycloak;
 using System.Net;
 
+[Trait("Level", "1")]
 public class KeycloakAdminServiceTest
 {
     private const string KeycloakId = "9f1b2c3d-4e5f-6789-abcd-ef0123456789";

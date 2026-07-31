@@ -5,6 +5,7 @@ using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Application.Tests.Nutrition;
 
+[Trait("Level", "1")]
 public class NutritionCalculatorFactoryTest
 {
     private static readonly MacroDistribution DefaultMacros = new(20, 50, 30);
