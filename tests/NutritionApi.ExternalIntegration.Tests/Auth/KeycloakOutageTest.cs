@@ -84,7 +84,7 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
 
             Assert.Contains(
                 "clés de signature",
-                DeroulerLesCauses(echec),
+                ExceptionChain.DeroulerLesCauses(echec),
                 StringComparison.OrdinalIgnoreCase);
         }
         finally
@@ -92,23 +92,6 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
             DockerContainer.Start(DockerContainer.Keycloak);
             await DockerContainer.WaitHealthyAsync(DockerContainer.Keycloak, TimeSpan.FromSeconds(240));
         }
-    }
-
-    /// <summary>Concatène les messages d'une exception et de toutes ses causes.</summary>
-    /// <param name="exception">Exception de tête.</param>
-    /// <returns>Les messages, du plus externe au plus interne.</returns>
-    /// <remarks>
-    /// L'hôte enveloppe l'échec d'un service hébergé : le message d'origine n'est pas celui de
-    /// l'exception de premier niveau.
-    /// </remarks>
-    private static string DeroulerLesCauses(Exception exception)
-    {
-        var messages = new List<string>();
-
-        for (Exception? courante = exception; courante is not null; courante = courante.InnerException)
-            messages.Add(courante.Message);
-
-        return string.Join(" | ", messages);
     }
 
     /// <summary>Garantit la présence de la ligne <c>User</c> correspondant au sujet du jeton.</summary>

@@ -70,6 +70,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+// ── Paramètres d'administration Keycloak ───────────────────────────────────────
+// Vides dans appsettings.json par conception, renseignés par l'environnement. Leur absence ne se
+// verrait qu'à la purge RGPD de la nuit suivante, dont l'échec est silencieux. Enregistré avant la
+// vérification de disponibilité : lire quatre chaînes échoue tout de suite, elle attend le réseau.
+builder.Services.AddHostedService<KeycloakAdminConfigurationValidator>();
+
 // ── Disponibilité du serveur d'identité au démarrage ───────────────────────────
 // La validation des jetons est locale, à partir des clés du realm mises en cache. Une instance
 // démarrée sans avoir pu les récupérer accepterait le trafic et refuserait tous les jetons.
