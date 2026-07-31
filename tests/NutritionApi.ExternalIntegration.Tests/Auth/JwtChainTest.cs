@@ -6,7 +6,7 @@ using NutritionApi.Domain.Enums;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-EXT-09 et IT-EXT-10 — la chaîne d'authentification complète, avec un Keycloak réel.
+/// la chaîne d'authentification complète, avec un Keycloak réel.
 /// </summary>
 /// <remarks>
 /// Transférés depuis NTR-74. Au niveau 2, <c>TestAuthHandler</c> remplace le schéma
@@ -18,7 +18,7 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 public sealed class JwtChainTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-EXT-09 — un jeton émis par Keycloak ouvre l'accès à <c>GET /api/v1/users/me</c>.
+    /// un jeton émis par Keycloak ouvre l'accès à <c>GET /api/v1/users/me</c>.
     /// </summary>
     /// <remarks>
     /// Ce que le test prouve : l'API récupère les clés de signature du realm, valide l'issuer et
@@ -26,7 +26,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     /// l'un des trois donnerait 401.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_09_JetonEmisParKeycloak_Retourne200()
+    public async Task GetUsersMe_ShouldReturn200_WhenTokenIsIssuedByKeycloak()
     {
         await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
 
@@ -38,7 +38,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-10 — un jeton sans le rôle <c>admin</c> se voit refuser le tableau de bord.
+    /// un jeton sans le rôle <c>admin</c> se voit refuser le tableau de bord.
     /// </summary>
     /// <remarks>
     /// Ce que le test prouve : les rôles voyagent bien dans <c>realm_access.roles</c> et la
@@ -46,7 +46,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     /// laisserait passer. Le 403 — et non 401 — atteste que le jeton est valide mais insuffisant.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_10_JetonSansRoleAdmin_Retourne403()
+    public async Task GetAdminDashboard_ShouldReturn403_WhenTokenHasNoAdminRole()
     {
         await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
 
@@ -58,10 +58,10 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-18 — un jeton réellement expiré est refusé.
+    /// un jeton réellement expiré est refusé.
     /// </summary>
     /// <remarks>
-    /// Ce cas figurait au recensement sous IT-AUTH-02, au niveau 2, où il ne pouvait pas être écrit :
+    /// Ce cas relevait du niveau 2, où il ne pouvait pas être écrit :
     /// <c>TestAuthHandler</c> y remplace le composant qui vérifie l'expiration. Il n'avait jamais été
     /// repris ici.
     /// <para>
@@ -75,7 +75,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_18_JetonExpire_Retourne401()
+    public async Task GetUsersMe_ShouldReturn401_WhenTokenHasExpired()
     {
         await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
 
@@ -95,7 +95,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-19 — un jeton dont l'audience ne désigne pas cette API est refusé.
+    /// un jeton dont l'audience ne désigne pas cette API est refusé.
     /// </summary>
     /// <remarks>
     /// Ce que le test protège : sans contrôle de l'audience, un jeton légitimement obtenu pour une
@@ -107,7 +107,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_19_JetonSansLAudienceAttendue_Retourne401()
+    public async Task GetUsersMe_ShouldReturn401_WhenTokenAudienceDoesNotMatch()
     {
         await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
 
@@ -130,7 +130,7 @@ public sealed class JwtChainTest(IntegrationFactory factory)
     /// <param name="keycloakId">Identifiant Keycloak porté par le jeton.</param>
     /// <remarks>
     /// <c>UserResolutionMiddleware</c> renvoie 401 quand le compte est absent de la base. Sans ce
-    /// semis, IT-EXT-09 échouerait sur un 401 qui ne dirait rien de la validation du jeton.
+    /// semis, le test échouerait sur un 401 qui ne dirait rien de la validation du jeton.
     /// </remarks>
     private async Task EnsureUserAsync(string keycloakId)
     {

@@ -1,4 +1,4 @@
-// Les tests de niveau 3 partagent trois services réels et une base unique. IT-EXT-14 va jusqu'à
+// Les tests de niveau 3 partagent trois services réels et une base unique. L'un d'eux va jusqu'à
 // arrêter le conteneur PostgreSQL : deux collections exécutées en parallèle se verraient couper la
 // base sous les pieds. La parallélisation est donc désactivée pour tout l'assembly.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]

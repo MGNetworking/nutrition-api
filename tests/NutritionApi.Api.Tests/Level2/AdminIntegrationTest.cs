@@ -11,7 +11,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 /// <summary>
-/// Tests de niveau 2 de <c>AdminController</c> — NTR-106. Couvre IT-ADM-01 à IT-ADM-09.
+/// Tests de niveau 2 de <c>AdminController</c> — NTR-106. Couvre le tableau de bord, la santé du système et la gestion des templates.
 /// </summary>
 [Trait("Level", "2")]
 [Collection(ApiCollection.Name)]
@@ -43,10 +43,10 @@ public class AdminIntegrationTest
             ? new DietPlan(null, "Template", true, DietType.Balanced, Goal.Maintenance, 70f, new MacroDistribution(30, 40, 30))
             : new DietPlan(Guid.NewGuid(), "Personnel", false, DietType.Balanced, Goal.Maintenance, 70f, new MacroDistribution(30, 40, 30));
 
-    // ── Tableau de bord — IT-ADM-01, IT-ADM-02 ────────────────────────────────
+    // ── Tableau de bord ────────────────────────────────
 
     [Fact]
-    public async Task IT_ADM_01_SansRoleAdmin_Retourne403()
+    public async Task GetAdminDashboard_ShouldReturn403_WhenUserIsNotAdmin()
     {
         var reponse = await _factory.CreateAuthenticatedClient().GetAsync(Dashboard);
 
@@ -54,7 +54,7 @@ public class AdminIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ADM_02_AvecRoleAdmin_Retourne200AvecLesIndicateurs()
+    public async Task GetAdminDashboard_ShouldReturn200WithKpis_WhenUserIsAdmin()
     {
         _factory.Users.Setup(r => r.CountByTierAsync(SubscriptionTier.Free)).ReturnsAsync(10);
         _factory.Users.Setup(r => r.CountByTierAsync(SubscriptionTier.Pro)).ReturnsAsync(3);
@@ -70,10 +70,10 @@ public class AdminIntegrationTest
         Assert.Equal(10, tableau.UsersByTier.Free);
     }
 
-    // ── Santé du système — IT-ADM-03 ──────────────────────────────────────────
+    // ── Santé du système ──────────────────────────────────────────
 
     [Fact]
-    public async Task IT_ADM_03_SanteDuSysteme_Retourne200()
+    public async Task GetAdminSystemHealth_ShouldReturn200_WhenUserIsAdmin()
     {
         _factory.JobMonitoring.Setup(s => s.GetJobsStatusAsync()).ReturnsAsync([]);
         _factory.FoodItems.Setup(r => r.CountAsync()).ReturnsAsync(4242);
@@ -90,17 +90,17 @@ public class AdminIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ADM_03_SanteDuSysteme_SansRoleAdmin_Retourne403()
+    public async Task GetAdminSystemHealth_ShouldReturn403_WhenUserIsNotAdmin()
     {
         var reponse = await _factory.CreateAuthenticatedClient().GetAsync(Health);
 
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
     }
 
-    // ── Création de template — IT-ADM-04, IT-ADM-05 ───────────────────────────
+    // ── Création de template ───────────────────────────
 
     [Fact]
-    public async Task IT_ADM_04_CreationValide_Retourne201()
+    public async Task PostAdminDietPlanTemplates_ShouldReturn201_WhenRequestIsValid()
     {
         DietPlan? cree = null;
         _factory.DietPlans
@@ -118,7 +118,7 @@ public class AdminIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ADM_05_MacrosInvalides_Retourne422()
+    public async Task PostAdminDietPlanTemplates_ShouldReturn422_WhenMacrosAreInvalid()
     {
         var requete = new CreateDietPlanRequest("Bancal", DietType.Balanced, Goal.Maintenance, 70f,
             new MacroDistributionDto(10, 10, 10));
@@ -130,10 +130,10 @@ public class AdminIntegrationTest
         _factory.DietPlans.Verify(r => r.AddAsync(It.IsAny<DietPlan>()), Times.Never);
     }
 
-    // ── Modification de template — IT-ADM-06, IT-ADM-07 ───────────────────────
+    // ── Modification de template ───────────────────────
 
     [Fact]
-    public async Task IT_ADM_06_ModificationDunTemplateExistant_Retourne200()
+    public async Task PutAdminDietPlanTemplate_ShouldReturn200_WhenTemplateExists()
     {
         var template = Plan(template: true);
         _factory.DietPlans.Setup(r => r.GetByIdAsync(template.Id)).ReturnsAsync(template);
@@ -146,7 +146,7 @@ public class AdminIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ADM_07_ModificationDunTemplateInexistant_Retourne404()
+    public async Task PutAdminDietPlanTemplate_ShouldReturn404_WhenTemplateDoesNotExist()
     {
         var inconnu = Guid.NewGuid();
         _factory.DietPlans.Setup(r => r.GetByIdAsync(inconnu)).ReturnsAsync((DietPlan?)null);
@@ -157,7 +157,7 @@ public class AdminIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ADM_07_UnPlanPersonnelNestPasAtteignableParLaRouteAdmin()
+    public async Task PutAdminDietPlanTemplate_ShouldReturn404_WhenPlanIsPersonal()
     {
         var personnel = Plan(template: false);
         _factory.DietPlans.Setup(r => r.GetByIdAsync(personnel.Id)).ReturnsAsync(personnel);
@@ -170,10 +170,10 @@ public class AdminIntegrationTest
         _factory.DietPlans.Verify(r => r.UpdateAsync(It.IsAny<DietPlan>()), Times.Never);
     }
 
-    // ── Suppression de template — IT-ADM-08, IT-ADM-09 ────────────────────────
+    // ── Suppression de template ────────────────────────
 
     [Fact]
-    public async Task IT_ADM_08_SuppressionDunTemplateExistant_Retourne204()
+    public async Task DeleteAdminDietPlanTemplate_ShouldReturn204_WhenTemplateExists()
     {
         var template = Plan(template: true);
         _factory.DietPlans.Setup(r => r.GetByIdAsync(template.Id)).ReturnsAsync(template);
@@ -185,7 +185,7 @@ public class AdminIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ADM_09_SuppressionDunTemplateInexistant_Retourne404()
+    public async Task DeleteAdminDietPlanTemplate_ShouldReturn404_WhenTemplateDoesNotExist()
     {
         var inconnu = Guid.NewGuid();
         _factory.DietPlans.Setup(r => r.GetByIdAsync(inconnu)).ReturnsAsync((DietPlan?)null);

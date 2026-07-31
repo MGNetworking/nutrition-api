@@ -8,14 +8,14 @@ using NutritionApi.Infrastructure.Jobs.RgpdPurge;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-EXT-07 et IT-EXT-08 — exécution réelle des jobs planifiés contre la base.
+/// exécution réelle des jobs planifiés contre la base.
 /// </summary>
 [Trait("Level", "3")]
 [Collection(IntegrationCollection.Name)]
 public sealed class JobExecutionTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-EXT-07 — l'import déclenché manuellement persiste les aliments du dump.
+    /// l'import déclenché manuellement persiste les aliments du dump.
     /// </summary>
     /// <remarks>
     /// Le téléchargement depuis openfoodfacts.org est remplacé par une source de lignes en mémoire
@@ -24,7 +24,7 @@ public sealed class JobExecutionTest(IntegrationFactory factory)
     /// unique sur <c>off_id</c>.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_07_ImportManuel_PersisteLesAliments()
+    public async Task OffImportJob_ShouldPersistFoodItems_WhenTriggeredManually()
     {
         var premier = $"it-ext-07-a-{Guid.NewGuid()}";
         var second = $"it-ext-07-b-{Guid.NewGuid()}";
@@ -45,40 +45,62 @@ public sealed class JobExecutionTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-08 — la purge RGPD déclenchée manuellement supprime le compte en base.
+    /// la purge RGPD déclenchée manuellement supprime le compte en base.
     /// </summary>
     /// <remarks>
-    /// Le job supprime Keycloak d'abord, via le flux <c>client_credentials</c> du client confidentiel
-    /// <c>nutrition-api-service</c>. Ce test éprouve donc la chaîne complète : obtention du jeton de
-    /// service, appel à l'API d'administration, puis suppression en base.
+    /// Le job supprime Keycloak d'abord — <c>DeleteUserAsync(user.KeycloakId)</c> — puis la ligne en
+    /// base. Les deux suppressions sont donc vérifiées.
     /// <para>
-    /// L'identifiant Keycloak semé n'existe pas dans le realm : l'appel de suppression répond 404, que
-    /// <c>KeycloakAdminService</c> traite comme « le compte n'existe plus » et ignore. C'est ce qui
-    /// rend la purge idempotente, et ce qui permet à ce test de ne pas consommer un compte du realm.
+    /// <b>Le compte Keycloak est réellement créé.</b> <c>keycloak_id</c> est par définition le
+    /// <c>sub</c> d'un compte existant : inventer cette valeur construirait un état impossible en
+    /// production, et l'appel de suppression emprunterait la branche « compte déjà absent » — un 404
+    /// que <c>KeycloakAdminService</c> traite comme un succès. Le test passerait sans jamais éprouver
+    /// la suppression.
+    /// </para>
+    /// <para>
+    /// Le compte est jetable et créé pour ce seul test : les comptes du realm servent aux autres cas,
+    /// les supprimer les casserait.
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_08_PurgeManuelle_SupprimeLeCompte()
+    public async Task RgpdPurgeJob_ShouldDeleteAccountFromKeycloakAndDatabase_WhenGracePeriodExpired()
     {
-        var keycloakId = $"it-ext-08-{Guid.NewGuid()}";
-        var user = await SeedUserAsync(keycloakId);
+        var username = $"it-ext-08-{Guid.NewGuid():N}";
+        var keycloakId = await factory.Tokens.CreateThrowawayUserAsync(username);
 
-        // La grace period est de 30 jours et MarkAsDeleted fixe DeletedAt à maintenant : la date est
-        // reculée en SQL, seul moyen de rendre le compte éligible sans attendre un mois.
-        await using (var context = factory.NewContext())
+        try
         {
-            await context.Database.ExecuteSqlAsync(
-                $"update users set deleted_at = now() - interval '40 days' where id = {user.Id}");
+            Assert.True(
+                await factory.Tokens.UserExistsAsync(keycloakId),
+                "Le compte jetable doit exister avant la purge, sinon le test ne prouve rien.");
+
+            var user = await SeedUserAsync(keycloakId);
+
+            // La grace period est de 30 jours et MarkAsDeleted fixe DeletedAt à maintenant : la date
+            // est reculée en SQL, seul moyen de rendre le compte éligible sans attendre un mois.
+            await using (var context = factory.NewContext())
+            {
+                await context.Database.ExecuteSqlAsync(
+                    $"update users set deleted_at = now() - interval '40 days' where id = {user.Id}");
+            }
+
+            var (scope, job) = factory.Resolve<IRgpdPurgeJob>();
+
+            using (scope)
+                await job.RunAsync();
+
+            await using var verification = factory.NewContext();
+
+            Assert.Null(await verification.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId));
+            Assert.False(
+                await factory.Tokens.UserExistsAsync(keycloakId),
+                "Le compte devait disparaître de Keycloak, pas seulement de la base.");
         }
-
-        var (scope, job) = factory.Resolve<IRgpdPurgeJob>();
-
-        using (scope)
-            await job.RunAsync();
-
-        await using var verification = factory.NewContext();
-
-        Assert.Null(await verification.Users.FirstOrDefaultAsync(u => u.KeycloakId == keycloakId));
+        finally
+        {
+            // Le test peut échouer avant la purge : ne pas laisser de compte derrière soi.
+            await factory.Tokens.DeleteUserAsync(keycloakId);
+        }
     }
 
     /// <summary>Construit une ligne JSONL au format du dump Open Food Facts.</summary>

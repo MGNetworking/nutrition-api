@@ -10,7 +10,7 @@ using NutritionApi.Infrastructure.Scheduling;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-JOB-01 à IT-JOB-04 — la supervision des jobs récurrents, lue dans <c>hangfire.hash</c>.
+/// La supervision des jobs récurrents, lue dans <c>hangfire.hash</c>.
 /// </summary>
 /// <remarks>
 /// <c>JobMonitoringService</c> interroge le stockage Hangfire en SQL brut : ses tables, ses noms de
@@ -22,7 +22,7 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 public sealed class JobStatusTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-JOB-01 — sans aucun job enregistré, la supervision renvoie une liste vide.
+    /// sans aucun job enregistré, la supervision renvoie une liste vide.
     /// </summary>
     /// <remarks>
     /// L'API enregistre ses jobs au démarrage : les définitions sont donc supprimées le temps du test,
@@ -30,7 +30,7 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     /// remise en état, les cas suivants ne trouveraient plus rien.
     /// </remarks>
     [Fact]
-    public async Task IT_JOB_01_AucunJobEnregistre_RetourneListeVide()
+    public async Task GetJobsStatusAsync_ShouldReturnEmptyList_WhenNoRecurringJobIsRegistered()
     {
         await using (var context = factory.NewContext())
         {
@@ -52,7 +52,7 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-JOB-02 — un job enregistré mais jamais exécuté est <c>Scheduled</c>, sans dernière
+    /// un job enregistré mais jamais exécuté est <c>Scheduled</c>, sans dernière
     /// exécution.
     /// </summary>
     /// <remarks>
@@ -61,7 +61,7 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     /// <c>Scheduled</c> — la valeur ne vient pas de Hangfire.
     /// </remarks>
     [Fact]
-    public async Task IT_JOB_02_JobJamaisExecute_RetourneScheduled()
+    public async Task GetJobsStatusAsync_ShouldReturnScheduled_WhenJobHasNeverRun()
     {
         await ReregisterJobsAsync();
 
@@ -79,32 +79,43 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-JOB-03 — après une exécution réussie, la dernière exécution est renseignée et le run
+    /// après une exécution réussie, la dernière exécution est renseignée et le run
     /// aboutit à l'état <c>Succeeded</c>.
     /// </summary>
     /// <remarks>
-    /// Le job est déclenché par Hangfire, puis attendu : le serveur travaille en arrière-plan. La
-    /// source de dump est vide, l'import se termine sans rien écrire — ce qui suffit à produire un run
-    /// réussi.
-    /// <para>
     /// Ce cas a mis au jour un défaut de <c>JobMonitoringService</c>, corrigé depuis. Un déclenchement
     /// manuel écrit <c>LastExecution</c> et <c>LastJobId</c> dans <c>hangfire.hash</c>, mais <b>pas</b>
     /// <c>LastJobState</c> : le service, qui n'en lisait que ce dernier champ, exposait <c>Scheduled</c>
     /// alors que <c>lastRun</c> était renseigné. Il joint désormais <c>hangfire.job</c> sur
     /// <c>LastJobId</c> pour obtenir l'état réel du run.
+    /// <para>
+    /// <b>Ce test démarre sa propre application.</b> C'est le seul de la suite qui dépende d'un
+    /// traitement de fond : le serveur Hangfire doit prendre le job déclenché et le mener à son terme.
+    /// Or d'autres cas arrêtent PostgreSQL et Keycloak ; après ces coupures, le serveur Hangfire de
+    /// l'application partagée ne reprend plus les jobs, et l'attente expirait.
+    /// </para>
+    /// <para>
+    /// Une application dédiée lui donne son propre serveur Hangfire et sa propre base, que rien
+    /// d'autre ne touche. Coût : un démarrage d'hôte supplémentaire.
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_JOB_03_JobExecuteAvecSucces_RetourneSucceeded()
+    public async Task GetJobsStatusAsync_ShouldReturnSucceeded_WhenJobRanSuccessfully()
     {
-        await ReregisterJobsAsync();
+        await using var isolee = new IntegrationFactory();
 
-        factory.DumpLines.Clear();
+        // Construire un client démarre l'hôte, donc le serveur Hangfire et l'enregistrement des
+        // jobs récurrents. Sans cela, il n'y aurait rien à déclencher.
+        isolee.CreateClient().Dispose();
 
-        factory.Services.GetRequiredService<IRecurringJobManager>()
-               .Trigger(IJobMonitoringService.ImportOffJobName);
+        // Source de dump vide : l'import se termine sans rien écrire, ce qui suffit à produire un
+        // run réussi.
+        isolee.DumpLines.Clear();
 
-        var (scope, monitoring) = factory.Resolve<IJobMonitoringService>();
+        isolee.Services.GetRequiredService<IRecurringJobManager>()
+              .Trigger(IJobMonitoringService.ImportOffJobName);
+
+        var (scope, monitoring) = isolee.Resolve<IJobMonitoringService>();
 
         using (scope)
         {
@@ -128,7 +139,7 @@ public sealed class JobStatusTest(IntegrationFactory factory)
 
             Assert.True(
                 importOff is not null,
-                $"Aucun run terminé après 60 s. Contenu du hash :\n{await DumpHashAsync()}");
+                $"Aucun run terminé après 60 s. Contenu du hash :\n{await DumpHashAsync(isolee)}");
 
             Assert.Equal("Succeeded", importOff!.Status);
             Assert.NotNull(importOff.LastRun);
@@ -136,14 +147,14 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-JOB-04 — le job d'import est exposé sous le nom exact <c>import-off</c>.
+    /// le job d'import est exposé sous le nom exact <c>import-off</c>.
     /// </summary>
     /// <remarks>
     /// <c>AdminService</c> remonte <c>LastImportAt</c> à la racine de la réponse en cherchant ce nom
     /// précis. Un renommage côté enregistrement viderait ce champ sans qu'aucun autre test ne le voie.
     /// </remarks>
     [Fact]
-    public async Task IT_JOB_04_NomDuJobDImport_EstImportOff()
+    public async Task GetJobsStatusAsync_ShouldExposeImportOffJobName_WhenJobIsRegistered()
     {
         await ReregisterJobsAsync();
 
@@ -177,10 +188,9 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     /// toujours un champ que Hangfire n'écrit pas, ou pas au moment supposé. Sans ce contenu, l'échec
     /// n'indique rien d'exploitable.
     /// </remarks>
-    private async Task<string> DumpHashAsync()
+    private static async Task<string> DumpHashAsync(IntegrationFactory fabrique)
     {
-        await using var context = factory.NewContext();
-        await using var connexion = new Npgsql.NpgsqlConnection(factory.Database.ConnectionString);
+        await using var connexion = new Npgsql.NpgsqlConnection(fabrique.Database.ConnectionString);
 
         await connexion.OpenAsync();
 

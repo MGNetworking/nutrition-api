@@ -113,7 +113,7 @@ public async Task CreateAsync_ShouldReturnDietPlanResponse_WhenRequestIsValid()
 
 ### Nommage des tests
 
-**Niveau 1** — `Méthode_Résultat_Condition`. Le test nomme la **méthode** qu'il éprouve.
+Une seule convention, **tous niveaux confondus** : `Méthode_Résultat_Condition`, **en anglais**.
 
 ```
 CreateAsync_ShouldReturnDietPlanResponse_WhenRequestIsValid
@@ -121,21 +121,26 @@ CreateAsync_ShouldThrow_WhenUserIdIsEmpty
 GetByIdAsync_ShouldReturnNull_WhenPlanDoesNotExist
 ```
 
-**Niveaux 2 et 3** — `IT_XXX_NN_Scénario_RésultatAttendu`. Le test nomme un **cas du recensement**,
-pas une méthode : plusieurs classes de production peuvent être traversées.
+**Pour un test d'intégration, « méthode » désigne l'endpoint.** Un tel test ne traverse pas une
+méthode mais une route, et souvent plusieurs classes :
 
 ```
-IT_ADM_01_SansRoleAdmin_Retourne403
-IT_USR_08_PeseeDejaEnregistreeALaMemeDate_Retourne409
-IT_EXT_14_BaseInjoignable_Retourne503
-IT_JOB_02_JobJamaisExecute_RetourneScheduled
+GetAdminDashboard_ShouldReturn403_WhenUserIsNotAdmin
+PostWeightEntries_ShouldReturn409_WhenEntryExistsForSameDate
+GetUsersMe_ShouldReturn503_WhenDatabaseIsUnreachable
 ```
 
-Le préfixe est l'identifiant du recensement : c'est la clé de correspondance entre le test et le cas
-recensé. Sans lui, plus rien ne relie les deux.
+Quand aucun endpoint n'est en cause — un repository, un job, un service de fond — on revient au nom
+de la méthode éprouvée :
 
-**Le résultat attendu termine toujours le nom.** `Retourne403`, `LeveConflictException`,
-`RetourneListeVide` — un rapport de test doit se lire sans ouvrir les fichiers.
+```
+GetByKeycloakIdAsync_ShouldReturnUser_WhenUserExists
+GetJobsStatusAsync_ShouldReturnScheduled_WhenJobHasNeverRun
+OffImportJob_ShouldPersistFoodItems_WhenTriggeredManually
+```
+
+**Le résultat attendu vient toujours avant la condition.** Un rapport de test doit se lire sans
+ouvrir les fichiers.
 
 ---
 

@@ -5,7 +5,7 @@ using NutritionApi.Domain.Entity;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-EXT-15 — cache indisponible : la recherche repart en base plutôt que d'échouer.
+/// cache indisponible : la recherche repart en base plutôt que d'échouer.
 /// </summary>
 /// <remarks>
 /// Le repli est une promesse explicite du système : une panne du cache ne doit pas dégrader le
@@ -23,10 +23,10 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 public sealed class RedisOutageTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-EXT-15 — Redis arrêté, la recherche d'aliments répond 200 avec les données de PostgreSQL.
+    /// Redis arrêté, la recherche d'aliments répond 200 avec les données de PostgreSQL.
     /// </summary>
     [Fact]
-    public async Task IT_EXT_15_CacheArrete_Retourne200DepuisLaBase()
+    public async Task GetFoodItems_ShouldReturn200FromDatabase_WhenCacheIsDown()
     {
         var keyword = $"itext15{Guid.NewGuid().ToString("N")[..8]}";
         await SeedFoodItemAsync(keyword);

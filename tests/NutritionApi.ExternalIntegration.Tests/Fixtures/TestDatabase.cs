@@ -87,7 +87,7 @@ public sealed class TestDatabase : IAsyncDisposable
     /// </summary>
     /// <returns>Un contexte à disposer par l'appelant.</returns>
     /// <remarks>
-    /// L'intercepteur est présent volontairement : IT-EXT-13 vérifie précisément qu'EF Core
+    /// L'intercepteur est présent volontairement : un test vérifie précisément qu'EF Core
     /// l'invoque. Un contexte de test qui l'omettrait ne prouverait rien.
     /// </remarks>
     public AppDbContext NewContext() => NewContext(ConnectionString);
@@ -111,7 +111,12 @@ public sealed class TestDatabase : IAsyncDisposable
     /// </remarks>
     public async ValueTask DisposeAsync()
     {
-        NpgsqlConnection.ClearAllPools();
+        // ClearPool et non ClearAllPools : cette dernière purge les connexions de tout le processus,
+        // y compris celles du serveur Hangfire de la fabrique partagée, qui cesse alors de traiter
+        // ses jobs. Une seconde fabrique libérée en cours de suite suffisait à faire échouer un test
+        // sans rapport, plusieurs minutes plus tard.
+        await using (var sien = new NpgsqlConnection(ConnectionString))
+            NpgsqlConnection.ClearPool(sien);
 
         await using var admin = new NpgsqlConnection(AdminConnectionString);
         await admin.OpenAsync();

@@ -253,7 +253,7 @@ Un même comportement n'est jamais vérifié à deux niveaux.
 > **Le socle du niveau 2 existe depuis NTR-134** — `Integration/Fixtures/ApiFactory.cs` et
 > `TestAuthHandler.cs` — mais aucun test métier n'a encore été écrit : c'est l'objet des tickets
 > NTR-105 à NTR-111. Les fichiers de stubs `[Fact(Skip = …)]` restent en place, porteurs des
-> identifiants du recensement (`IT-DP-*`, `IT-DT-*`, `IT-JOB-*`, `IT-AUTH-*`).
+> marqueur de niveau porté par chaque classe de test.
 >
 > ➜ **[Écrire un test de niveau 2](https://mgnetworking.github.io/docs-nutrition/backend/qualite/tests-niveau-2/)** — fonctionnement du socle, rôle de chaque classe et gabarit de test.
 

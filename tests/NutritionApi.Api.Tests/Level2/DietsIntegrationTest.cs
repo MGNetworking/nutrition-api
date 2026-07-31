@@ -10,7 +10,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 /// <summary>
-/// Tests de niveau 2 de <c>DietsController</c> — NTR-109. Couvre IT-DT-01 à IT-DT-12.
+/// Tests de niveau 2 de <c>DietsController</c> — NTR-109. Couvre la diète active, l’historique, la consultation, l’archivage et le lancement.
 /// </summary>
 [Trait("Level", "2")]
 [Collection(ApiCollection.Name)]
@@ -52,10 +52,10 @@ public class DietsIntegrationTest
             .ReturnsAsync([new WeightEntry(userId, 78f, DateOnly.FromDateTime(DateTime.UtcNow))]);
     }
 
-    // ── Diète active — IT-DT-01, IT-DT-02 ─────────────────────────────────────
+    // ── Diète active ─────────────────────────────────────
 
     [Fact]
-    public async Task IT_DT_01_DieteActiveExistante_Retourne200()
+    public async Task GetActiveDiet_ShouldReturn200_WhenActiveDietExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.Diets.Setup(r => r.GetActiveByUserIdAsync(utilisateur.Id)).ReturnsAsync(DieteDe(utilisateur.Id));
@@ -68,7 +68,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_02_AucuneDieteActive_Retourne404()
+    public async Task GetActiveDiet_ShouldReturn404_WhenNoActiveDietExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.Diets.Setup(r => r.GetActiveByUserIdAsync(utilisateur.Id)).ReturnsAsync((Diet?)null);
@@ -78,10 +78,10 @@ public class DietsIntegrationTest
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
     }
 
-    // ── Historique et consultation — IT-DT-03, IT-DT-04, IT-DT-05 ─────────────
+    // ── Historique et consultation ─────────────
 
     [Fact]
-    public async Task IT_DT_03_HistoriqueNonVide_Retourne200()
+    public async Task GetDietHistory_ShouldReturn200_WhenHistoryIsNotEmpty()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.Diets
@@ -96,7 +96,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_04_DieteExistanteEtProprietaire_Retourne200()
+    public async Task GetDiet_ShouldReturn200_WhenDietBelongsToUser()
     {
         var utilisateur = GivenUtilisateurCourant();
         var diete = DieteDe(utilisateur.Id);
@@ -108,7 +108,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_05_DieteInexistante_Retourne404()
+    public async Task GetDiet_ShouldReturn404_WhenDietDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnue = Guid.NewGuid();
@@ -131,10 +131,10 @@ public class DietsIntegrationTest
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
     }
 
-    // ── Archivage — IT-DT-06, IT-DT-07, IT-DT-08 ─────────────────────────────
+    // ── Archivage ─────────────────────────────
 
     [Fact]
-    public async Task IT_DT_06_ArchivageDuneDieteActive_Retourne200()
+    public async Task ArchiveDiet_ShouldReturn200_WhenDietIsActive()
     {
         var utilisateur = GivenUtilisateurCourant();
         var diete = DieteDe(utilisateur.Id);
@@ -149,7 +149,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_07_ArchivageDuneDieteDejaArchivee_Retourne422()
+    public async Task ArchiveDiet_ShouldReturn422_WhenDietIsAlreadyArchived()
     {
         var utilisateur = GivenUtilisateurCourant();
         var diete = DieteDe(utilisateur.Id);
@@ -163,7 +163,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_08_ArchivageDuneDieteInexistante_Retourne404()
+    public async Task ArchiveDiet_ShouldReturn404_WhenDietDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnue = Guid.NewGuid();
@@ -175,10 +175,10 @@ public class DietsIntegrationTest
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
     }
 
-    // ── Lancement — IT-DT-09 à IT-DT-12 ──────────────────────────────────────
+    // ── Lancement ──────────────────────────────────────
 
     [Fact]
-    public async Task IT_DT_09_LancementValide_Retourne201()
+    public async Task PostDiets_ShouldReturn201_WhenRequestIsValid()
     {
         var utilisateur = GivenUtilisateurCourant();
         var plan = PlanDe(utilisateur.Id);
@@ -193,7 +193,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_10_LancementAvecUneDieteDejaActive_Retourne409()
+    public async Task PostDiets_ShouldReturn409_WhenAnotherDietIsActive()
     {
         var utilisateur = GivenUtilisateurCourant();
         var plan = PlanDe(utilisateur.Id);
@@ -208,7 +208,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_11_LancementDunPlanInexistant_Retourne404()
+    public async Task PostDiets_ShouldReturn404_WhenPlanDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -221,7 +221,7 @@ public class DietsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DT_12_LancementSansAucunePesee_Retourne422()
+    public async Task PostDiets_ShouldReturn422_WhenUserHasNoWeightEntry()
     {
         var utilisateur = GivenUtilisateurCourant();
         var plan = PlanDe(utilisateur.Id);

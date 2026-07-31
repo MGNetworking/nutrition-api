@@ -8,7 +8,7 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 using StackExchange.Redis;
 
 /// <summary>
-/// IT-EXT-05, 06, 11 et 12 — le cache Redis réel et son invalidation par l'import (sous-tâche NTR-73).
+/// Plusieurs cas — le cache Redis réel et son invalidation par l'import (sous-tâche NTR-73).
 /// </summary>
 /// <remarks>
 /// Les tests unitaires du cache travaillent sur une doublure de <c>IConnectionMultiplexer</c> : ils
@@ -32,14 +32,14 @@ public sealed class RedisCacheTest(IntegrationFactory factory)
     private static string KeyOf(string keyword) => $"food:search:v1:{keyword.ToLowerInvariant().Trim()}";
 
     /// <summary>
-    /// IT-EXT-05 — première recherche en base et mise en cache, seconde recherche servie par Redis.
+    /// première recherche en base et mise en cache, seconde recherche servie par Redis.
     /// </summary>
     /// <remarks>
     /// La preuve du <i>hit</i> est obtenue en supprimant l'aliment de la base entre les deux appels :
     /// si la seconde recherche renvoie encore un résultat, il ne peut venir que du cache.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_05_CacheMissPuisHit_ServiParRedis()
+    public async Task SearchAsync_ShouldServeFromCache_WhenSearchIsRepeated()
     {
         var keyword = $"itext05{Guid.NewGuid().ToString("N")[..8]}";
         var foodItem = await SeedFoodItemAsync(keyword);
@@ -72,7 +72,7 @@ public sealed class RedisCacheTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-06 — une fois la clé expirée, la recherche repart en base.
+    /// une fois la clé expirée, la recherche repart en base.
     /// </summary>
     /// <remarks>
     /// La durée de vie configurée est de 24 heures : elle n'est pas attendue. La clé reçoit une
@@ -81,7 +81,7 @@ public sealed class RedisCacheTest(IntegrationFactory factory)
     /// vide, donc avoir réellement interrogé PostgreSQL.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_06_TtlExpire_RepartEnBase()
+    public async Task SearchAsync_ShouldQueryDatabase_WhenCacheEntryHasExpired()
     {
         var keyword = $"itext06{Guid.NewGuid().ToString("N")[..8]}";
         var foodItem = await SeedFoodItemAsync(keyword);
@@ -113,10 +113,10 @@ public sealed class RedisCacheTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-11 — un import ayant importé au moins un produit vide les recherches en cache.
+    /// un import ayant importé au moins un produit vide les recherches en cache.
     /// </summary>
     [Fact]
-    public async Task IT_EXT_11_ImportAvecProduits_VideLeCache()
+    public async Task OffImportJob_ShouldInvalidateSearchCache_WhenProductsWereImported()
     {
         var keyword = $"itext11{Guid.NewGuid().ToString("N")[..8]}";
         var database = Redis().GetDatabase();
@@ -134,14 +134,14 @@ public sealed class RedisCacheTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-12 — un import n'ayant rien importé laisse le cache intact.
+    /// un import n'ayant rien importé laisse le cache intact.
     /// </summary>
     /// <remarks>
     /// Le catalogue n'a pas changé : vider le cache ferait repartir toutes les recherches en base
     /// sans raison. La source de dump est vide, l'import ne persiste donc rien.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_12_ImportSansProduit_LaisseLeCacheIntact()
+    public async Task OffImportJob_ShouldKeepSearchCache_WhenNoProductWasImported()
     {
         var keyword = $"itext12{Guid.NewGuid().ToString("N")[..8]}";
         var database = Redis().GetDatabase();

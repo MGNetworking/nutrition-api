@@ -46,7 +46,7 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
 
     /// <summary>
     /// Lignes JSONL servies à la place du dump Open Food Facts. Un test qui déclenche l'import
-    /// remplit cette liste ; vide, l'import n'importe rien — ce qu'exploite IT-EXT-12.
+    /// remplit cette liste ; vide, l'import n'importe rien — ce qu'exploitent les cas d'invalidation.
     /// </summary>
     public List<string> DumpLines { get; } = [];
 
@@ -66,24 +66,21 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        // Environnement propre au niveau 3. Le niveau 2 utilise « Testing » et pointe vers une
+        // autorité factice : un appsettings.Testing.json le ferait viser le vrai Keycloak, la
+        // configuration applicative primant sur les UseSetting de sa fabrique.
+        builder.UseEnvironment("ExternalIntegration");
 
+        // Ce qui change à chaque exécution ou selon la machine reste ici.
         builder.UseSetting("ConnectionStrings:DefaultConnection", Database.ConnectionString);
         builder.UseSetting("Redis:ConnectionString", $"{RedisEndpoint},defaultDatabase={RedisDatabaseIndex}");
-        builder.UseSetting("Keycloak:Authority", KeycloakTokens.Authority);
-        builder.UseSetting("Keycloak:RequireHttpsMetadata", "false");
 
-        // L'environnement « Testing » n'a pas de fichier de configuration : sans ces trois clés,
-        // KeycloakAdminOptions resterait vide et le service d'administration construirait des URLs
-        // inexploitables. Elles ne servent qu'au flux client_credentials — la validation des jetons,
-        // elle, n'utilise aucune identité de client.
+        // Ce qui décrit le realm est lu dans keycloak/realm-export.json, jamais ressaisi : le placer
+        // dans appsettings.ExternalIntegration.json recréerait la duplication qu'on supprime.
+        builder.UseSetting("Keycloak:Authority", KeycloakTokens.Authority);
         builder.UseSetting("Keycloak:AdminBaseUrl", KeycloakTokens.AdminBaseUrl);
         builder.UseSetting("Keycloak:Realm", KeycloakTokens.Realm);
         builder.UseSetting("Keycloak:ServiceClientSecret", KeycloakTokens.ServiceClientSecret);
-
-        // Le délai de production est de 60 s, pour absorber un démarrage simultané en cluster.
-        // IT-EXT-17 attend cet échec : le raccourcir évite une minute d'attente à chaque exécution.
-        builder.UseSetting("Keycloak:StartupTimeoutSeconds", "10");
 
         builder.ConfigureTestServices(services =>
         {
@@ -92,7 +89,7 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
 
             // La tolérance d'horloge par défaut de la validation JWT est de cinq minutes : elle
             // absorbe les décalages entre le serveur d'identité et l'API. Un jeton expiré depuis une
-            // seconde resterait donc accepté, et IT-EXT-18 ne pourrait rien prouver sans attendre
+            // seconde resterait donc accepté, et le test d'expiration ne pourrait rien prouver sans attendre
             // plus de cinq minutes. Elle est annulée ici, et ici seulement — la production conserve
             // la valeur par défaut.
             services.Configure<JwtBearerOptions>(

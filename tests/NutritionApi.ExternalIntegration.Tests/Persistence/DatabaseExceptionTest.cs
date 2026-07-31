@@ -9,7 +9,7 @@ using NutritionApi.Domain.Enums;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-EXT-13 et IT-EXT-14 — le branchement de <c>DatabaseExceptionInterceptor</c> sur EF Core.
+/// le branchement de <c>DatabaseExceptionInterceptor</c> sur EF Core.
 /// </summary>
 /// <remarks>
 /// Transférés depuis NTR-135. Sa méthode <c>Translate</c> est déjà couverte par 5 tests unitaires ;
@@ -21,7 +21,7 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 public sealed class DatabaseExceptionTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-EXT-13 — une violation d'unicité remonte en <see cref="ConflictException"/>, pas en erreur
+    /// une violation d'unicité remonte en <see cref="ConflictException"/>, pas en erreur
     /// brute.
     /// </summary>
     /// <remarks>
@@ -40,7 +40,7 @@ public sealed class DatabaseExceptionTest(IntegrationFactory factory)
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_13_ViolationDUnicite_LeveConflictException()
+    public async Task SaveChangesAsync_ShouldThrowConflictException_WhenUniqueConstraintIsViolated()
     {
         var user = await SeedUserAsync($"it-ext-13-{Guid.NewGuid()}");
         var foodItem = await SeedFoodItemAsync();
@@ -64,7 +64,7 @@ public sealed class DatabaseExceptionTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-14 — base injoignable : l'API répond 503 avec <c>Retry-After</c>, pas 500.
+    /// base injoignable : l'API répond 503 avec <c>Retry-After</c>, pas 500.
     /// </summary>
     /// <remarks>
     /// Le conteneur PostgreSQL est arrêté puis redémarré par le test lui-même. C'est le seul cas de
@@ -77,7 +77,7 @@ public sealed class DatabaseExceptionTest(IntegrationFactory factory)
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_14_BaseInjoignable_Retourne503()
+    public async Task GetUsersMe_ShouldReturn503_WhenDatabaseIsUnreachable()
     {
         await SeedUserAsync(KeycloakTokens.StandardUserSubject, ignoreExisting: true);
 

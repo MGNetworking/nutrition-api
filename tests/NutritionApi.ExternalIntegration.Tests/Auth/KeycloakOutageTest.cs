@@ -6,7 +6,7 @@ using NutritionApi.Domain.Enums;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-EXT-16 et IT-EXT-17 — comportement de l'API quand le serveur d'identité est indisponible.
+/// comportement de l'API quand le serveur d'identité est indisponible.
 /// </summary>
 /// <remarks>
 /// La validation des jetons est **locale** : l'API vérifie les signatures avec les clés publiques du
@@ -18,7 +18,7 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 public sealed class KeycloakOutageTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-EXT-16 — serveur d'identité arrêté, clés déjà en cache : les requêtes authentifiées
+    /// serveur d'identité arrêté, clés déjà en cache : les requêtes authentifiées
     /// continuent d'aboutir.
     /// </summary>
     /// <remarks>
@@ -31,7 +31,7 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_16_ServeurDIdentiteArrete_Retourne200()
+    public async Task GetUsersMe_ShouldReturn200_WhenIdentityServerIsDownAndKeysAreCached()
     {
         await EnsureUserAsync(KeycloakTokens.StandardUserSubject);
 
@@ -57,7 +57,7 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-17 — serveur d'identité arrêté au démarrage : l'application refuse de démarrer.
+    /// serveur d'identité arrêté au démarrage : l'application refuse de démarrer.
     /// </summary>
     /// <remarks>
     /// Sans ce garde-fou, une instance démarrée pendant une indisponibilité n'a aucune clé en cache :
@@ -70,7 +70,7 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_17_ServeurDIdentiteArreteAuDemarrage_LHoteNeDemarrePas()
+    public async Task Host_ShouldFailToStart_WhenIdentityServerIsDownAtStartup()
     {
         DockerContainer.Stop(DockerContainer.Keycloak);
 

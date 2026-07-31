@@ -10,7 +10,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 /// <summary>
-/// Tests de niveau 2 de <c>UsersController</c> — NTR-107. Couvre IT-USR-01 à IT-USR-16 et la
+/// Tests de niveau 2 de <c>UsersController</c> — NTR-107. Couvre le profil, les pesées, les aliments favoris et la
 /// limite d'aliments favoris du palier d'abonnement.
 /// </summary>
 [Trait("Level", "2")]
@@ -49,10 +49,10 @@ public class UsersIntegrationTest
     private static FoodItem Aliment(string nom = "Poulet")
         => new("3017620422003", nom, 165f, 31, 0, 4, []);
 
-    // ── Profil — IT-USR-01 à IT-USR-06 ────────────────────────────────────────
+    // ── Profil ────────────────────────────────────────
 
     [Fact]
-    public async Task IT_USR_01_CreationDunNouveauProfil_Retourne201()
+    public async Task PostUsersMe_ShouldReturn201_WhenProfileIsNew()
     {
         // Aucun profil pour ce sub : c'est exactement la situation d'un nouvel utilisateur.
         _factory.Users.Setup(r => r.GetByKeycloakIdAsync(SubInconnu)).ReturnsAsync((User?)null);
@@ -69,7 +69,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_02_ProfilDejaExistant_Retourne409()
+    public async Task PostUsersMe_ShouldReturn409_WhenProfileAlreadyExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.Users.Setup(r => r.GetByKeycloakIdAsync(ApiFactory.DefaultSubject)).ReturnsAsync(utilisateur);
@@ -93,7 +93,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_03_LectureDuProfil_Retourne200()
+    public async Task GetUsersMe_ShouldReturn200_WhenProfileExists()
     {
         var utilisateur = GivenUtilisateurCourant();
 
@@ -105,7 +105,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_05_MiseAJourDuProfil_Retourne200()
+    public async Task PutUsersMe_ShouldReturn200_WhenRequestIsValid()
     {
         GivenUtilisateurCourant();
 
@@ -141,10 +141,10 @@ public class UsersIntegrationTest
         Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
     }
 
-    // ── Pesées — IT-USR-07 à IT-USR-11 ────────────────────────────────────────
+    // ── Pesées ────────────────────────────────────────
 
     [Fact]
-    public async Task IT_USR_07_AjoutDunePesee_Retourne201()
+    public async Task PostWeightEntries_ShouldReturn201_WhenRequestIsValid()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.WeightEntries
@@ -159,7 +159,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_08_PeseeDejaEnregistreeALaMemeDate_Retourne409()
+    public async Task PostWeightEntries_ShouldReturn409_WhenEntryExistsForSameDate()
     {
         var utilisateur = GivenUtilisateurCourant();
         var date = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -175,7 +175,7 @@ public class UsersIntegrationTest
     }
 
     /// <summary>
-    /// IT-USR-22 — sans date fournie, la pesée est datée du jour, et le doublon est refusé comme
+    /// sans date fournie, la pesée est datée du jour, et le doublon est refusé comme
     /// s'il avait été daté explicitement.
     /// </summary>
     /// <remarks>
@@ -185,7 +185,7 @@ public class UsersIntegrationTest
     /// naturellement une application mobile. Voir NTR-145.
     /// </remarks>
     [Fact]
-    public async Task IT_USR_22_PeseeSansDateDejaEnregistreeCeJour_Retourne409()
+    public async Task PostWeightEntries_ShouldReturn409_WhenEntryExistsTodayAndDateIsOmitted()
     {
         var utilisateur = GivenUtilisateurCourant();
         var aujourdhui = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -204,7 +204,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_09_HistoriqueDesPesees_Retourne200()
+    public async Task GetWeightEntries_ShouldReturn200_WhenHistoryExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.WeightEntries
@@ -219,7 +219,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_10_MiseAJourDunePesee_Retourne200()
+    public async Task PutWeightEntry_ShouldReturn200_WhenEntryExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         var pesee = new WeightEntry(utilisateur.Id, 78f, DateOnly.FromDateTime(DateTime.UtcNow));
@@ -232,7 +232,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_11_MiseAJourDunePeseeInexistante_Retourne404()
+    public async Task PutWeightEntry_ShouldReturn404_WhenEntryDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnue = Guid.NewGuid();
@@ -258,10 +258,10 @@ public class UsersIntegrationTest
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
     }
 
-    // ── Aliments favoris — IT-USR-12 à IT-USR-16 ──────────────────────────────
+    // ── Aliments favoris ──────────────────────────────
 
     [Fact]
-    public async Task IT_USR_12_ListeDesFavoris_Retourne200()
+    public async Task GetSavedFoodItems_ShouldReturn200_WhenFavoritesExist()
     {
         var utilisateur = GivenUtilisateurCourant();
         var aliment = Aliment();
@@ -280,7 +280,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_13_AjoutDunFavori_Retourne201()
+    public async Task PostSavedFoodItems_ShouldReturn201_WhenFoodItemIsNotSaved()
     {
         var utilisateur = GivenUtilisateurCourant();
         var aliment = Aliment();
@@ -297,7 +297,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_14_AlimentDejaEnFavori_Retourne409()
+    public async Task PostSavedFoodItems_ShouldReturn409_WhenFoodItemIsAlreadySaved()
     {
         var utilisateur = GivenUtilisateurCourant();
         var aliment = Aliment();
@@ -330,7 +330,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_15_SuppressionDunFavori_Retourne204()
+    public async Task DeleteSavedFoodItem_ShouldReturn204_WhenFavoriteExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         var favori = new SavedFoodItem(utilisateur.Id, Guid.NewGuid());
@@ -343,7 +343,7 @@ public class UsersIntegrationTest
     }
 
     [Fact]
-    public async Task IT_USR_16_SuppressionDunFavoriInexistant_Retourne404()
+    public async Task DeleteSavedFoodItem_ShouldReturn404_WhenFavoriteDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();

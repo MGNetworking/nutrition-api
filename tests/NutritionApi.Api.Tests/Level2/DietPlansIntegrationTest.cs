@@ -10,7 +10,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 /// <summary>
-/// Tests de niveau 2 de <c>DietPlansController</c> — NTR-108. Couvre IT-DP-01 à IT-DP-10,
+/// Tests de niveau 2 de <c>DietPlansController</c> — NTR-108. Couvre la lecture, la création, la modification, la suppression et les templates,
 /// la limite de plans et l'accès aux templates selon le palier d'abonnement.
 /// </summary>
 /// <remarks>
@@ -56,10 +56,10 @@ public class DietPlansIntegrationTest
     private void GivenNombreDePlans(int nombre)
         => _factory.DietPlans.Setup(r => r.CountByUserIdAsync(It.IsAny<Guid>())).ReturnsAsync(nombre);
 
-    // ── Lecture — IT-DP-01 ────────────────────────────────────────────────────
+    // ── Lecture ────────────────────────────────────────────────────
 
     [Fact]
-    public async Task IT_DP_01_ListerSesPlans_Retourne200AvecLesPlansDeLUtilisateur()
+    public async Task GetDietPlans_ShouldReturn200WithOwnedPlans_WhenUserHasPlans()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.DietPlans
@@ -73,10 +73,10 @@ public class DietPlansIntegrationTest
         Assert.Equal("Prise de masse", Assert.Single(plans!).Name);
     }
 
-    // ── Création — IT-DP-02, IT-DP-03 et limite de palier ─────────────────────
+    // ── Création et limite de palier ─────────────────────
 
     [Fact]
-    public async Task IT_DP_02_CreationValide_Retourne201()
+    public async Task PostDietPlans_ShouldReturn201_WhenRequestIsValid()
     {
         GivenUtilisateurCourant();
         GivenNombreDePlans(0);
@@ -90,7 +90,7 @@ public class DietPlansIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DP_03_MacrosDontLaSommeNestPasCent_NEstPasAcceptee()
+    public async Task PostDietPlans_ShouldReject_WhenMacrosDoNotSumTo100()
     {
         GivenUtilisateurCourant();
         GivenNombreDePlans(0);
@@ -146,10 +146,10 @@ public class DietPlansIntegrationTest
         Assert.Equal(HttpStatusCode.BadRequest, reponse.StatusCode);
     }
 
-    // ── Modification — IT-DP-04, IT-DP-05, IT-DP-06 ───────────────────────────
+    // ── Modification ───────────────────────────
 
     [Fact]
-    public async Task IT_DP_04_ModificationDeSonPropreplan_Retourne200()
+    public async Task PutDietPlan_ShouldReturn200_WhenPlanBelongsToUser()
     {
         var utilisateur = GivenUtilisateurCourant();
         var plan = PlanDe(utilisateur.Id);
@@ -164,7 +164,7 @@ public class DietPlansIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DP_05_ModificationDuPlanDunAutre_Retourne403()
+    public async Task PutDietPlan_ShouldReturn403_WhenPlanBelongsToAnotherUser()
     {
         GivenUtilisateurCourant();
         var planDunAutre = PlanDe(Guid.NewGuid());
@@ -178,7 +178,7 @@ public class DietPlansIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DP_06_ModificationDunPlanInexistant_Retourne404()
+    public async Task PutDietPlan_ShouldReturn404_WhenPlanDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -190,10 +190,10 @@ public class DietPlansIntegrationTest
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
     }
 
-    // ── Suppression — IT-DP-07, IT-DP-08 ──────────────────────────────────────
+    // ── Suppression ──────────────────────────────────────
 
     [Fact]
-    public async Task IT_DP_07_SuppressionDeSonPropreplan_Retourne204()
+    public async Task DeleteDietPlan_ShouldReturn204_WhenPlanBelongsToUser()
     {
         var utilisateur = GivenUtilisateurCourant();
         var plan = PlanDe(utilisateur.Id);
@@ -206,7 +206,7 @@ public class DietPlansIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DP_08_SuppressionDunPlanInexistant_Retourne404()
+    public async Task DeleteDietPlan_ShouldReturn404_WhenPlanDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -217,10 +217,10 @@ public class DietPlansIntegrationTest
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
     }
 
-    // ── Templates — IT-DP-09, IT-DP-10 ────────────────────────────────────────
+    // ── Templates ────────────────────────────────────────
 
     [Fact]
-    public async Task IT_DP_09_TemplatesEnPalierFree_Retourne403()
+    public async Task GetDietPlanTemplates_ShouldReturn403_WhenTierIsFree()
     {
         GivenUtilisateurCourant(SubscriptionTier.Free);
 
@@ -230,7 +230,7 @@ public class DietPlansIntegrationTest
     }
 
     [Fact]
-    public async Task IT_DP_10_TemplatesEnPalierPro_Retourne200()
+    public async Task GetDietPlanTemplates_ShouldReturn200_WhenTierIsPro()
     {
         GivenUtilisateurCourant(SubscriptionTier.Pro);
         _factory.DietPlans

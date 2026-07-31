@@ -34,4 +34,12 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Source de vérité des identités du realm. Copié plutôt que recopié à la main : les comptes,
+         leurs identifiants et le secret du service account sont lus depuis l'export lui-même. -->
+    <None Include="..\..\keycloak\realm-export.json" Link="realm-export.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

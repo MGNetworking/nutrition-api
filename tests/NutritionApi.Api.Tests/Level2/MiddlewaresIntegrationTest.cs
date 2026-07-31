@@ -9,11 +9,12 @@ using System.Text;
 
 /// <summary>
 /// Tests de niveau 2 des composants transverses du pipeline — NTR-105.
-/// Couvre IT-MW-*, IT-EX-*, IT-AUTH-01/03/04 et IT-PIPE-*.
+/// Couvre la résolution d’utilisateur, la traduction des exceptions, l’authentification et le pipeline.
 /// </summary>
 /// <remarks>
-/// IT-AUTH-02 (jeton expiré) n'est pas ici : <c>TestAuthHandler</c> ne vérifie pas l'expiration,
-/// il remplace le composant qui s'en charge. Ce cas relève du niveau 3 (NTR-28).
+/// Le rejet d'un jeton expiré n'est pas ici : <c>TestAuthHandler</c> ne vérifie pas l'expiration,
+/// il remplace le composant qui s'en charge. Ce cas est couvert au niveau 3, par
+/// <c>GetUsersMe_ShouldReturn401_WhenTokenHasExpired</c>.
 /// </remarks>
 [Trait("Level", "2")]
 [Collection(ApiCollection.Name)]
@@ -42,7 +43,7 @@ public class MiddlewaresIntegrationTest
     // ── UserResolutionMiddleware — IT-MW ──────────────────────────────────────
 
     [Fact]
-    public async Task IT_MW_01_IdentiteValide_InjecteLUserIdInterneDansLeControleur()
+    public async Task UserResolution_ShouldInjectInternalUserId_WhenIdentityIsValid()
     {
         var recu = Guid.Empty;
         GivenPlansReadSucceeds(id => recu = id);
@@ -57,7 +58,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_MW_02_IdentiteValideMaisProfilAbsent_Retourne401()
+    public async Task UserResolution_ShouldReturn401_WhenProfileIsMissing()
     {
         GivenPlansReadSucceeds();
 
@@ -70,7 +71,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_MW_03_SansIdentite_Retourne401AvantLeMiddleware()
+    public async Task UserResolution_ShouldReturn401BeforeMiddleware_WhenIdentityIsAbsent()
     {
         var reponse = await _factory.CreateAnonymousClient().GetAsync(PlansEndpoint);
 
@@ -80,11 +81,11 @@ public class MiddlewaresIntegrationTest
     // ── ExceptionMiddleware — IT-EX ───────────────────────────────────────────
 
     [Theory]
-    [InlineData(typeof(NotFoundException), HttpStatusCode.NotFound)]          // IT-EX-01
-    [InlineData(typeof(ConflictException), HttpStatusCode.Conflict)]          // IT-EX-02
-    [InlineData(typeof(ForbiddenException), HttpStatusCode.Forbidden)]        // IT-EX-03
-    [InlineData(typeof(UnprocessableException), HttpStatusCode.UnprocessableEntity)] // IT-EX-04
-    public async Task IT_EX_01_a_04_ExceptionApplicative_EstTraduiteEnStatutHttp(Type type, HttpStatusCode attendu)
+    [InlineData(typeof(NotFoundException), HttpStatusCode.NotFound)]
+    [InlineData(typeof(ConflictException), HttpStatusCode.Conflict)]
+    [InlineData(typeof(ForbiddenException), HttpStatusCode.Forbidden)]
+    [InlineData(typeof(UnprocessableException), HttpStatusCode.UnprocessableEntity)]
+    public async Task ExceptionMiddleware_ShouldTranslateToHttpStatus_WhenApplicationExceptionIsThrown(Type type, HttpStatusCode attendu)
     {
         GivenPlansReadThrows((Exception)Activator.CreateInstance(type, "message de test")!);
 
@@ -94,7 +95,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_EX_01_NotFound_RetourneUnProblemDetailsPortantLeMessage()
+    public async Task ExceptionMiddleware_ShouldReturnProblemDetailsWithMessage_WhenNotFoundIsThrown()
     {
         GivenPlansReadThrows(new NotFoundException("plan introuvable"));
 
@@ -106,7 +107,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_EX_05_ExceptionNonGeree_Retourne500SansDivulguerLeDetail()
+    public async Task ExceptionMiddleware_ShouldReturn500WithoutDetails_WhenExceptionIsUnhandled()
     {
         GivenPlansReadThrows(new InvalidOperationException("chaîne de connexion invalide"));
 
@@ -168,7 +169,7 @@ public class MiddlewaresIntegrationTest
     // ── Authentification et autorisation — IT-AUTH ────────────────────────────
 
     [Fact]
-    public async Task IT_AUTH_01_SansIdentite_Retourne401()
+    public async Task Authentication_ShouldReturn401_WhenTokenIsAbsent()
     {
         var reponse = await _factory.CreateAnonymousClient().GetAsync(AdminEndpoint);
 
@@ -176,7 +177,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_AUTH_03_RoleInsuffisant_Retourne403()
+    public async Task Authorization_ShouldReturn403_WhenRoleIsInsufficient()
     {
         var reponse = await _factory.CreateAuthenticatedClient().GetAsync(AdminEndpoint);
 
@@ -185,7 +186,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_AUTH_04_RoleAdmin_NEstNiRefuseNiInterdit()
+    public async Task Authorization_ShouldAllow_WhenRoleIsAdmin()
     {
         var reponse = await _factory.CreateAuthenticatedClient(roles: "admin").GetAsync(AdminEndpoint);
 
@@ -196,7 +197,7 @@ public class MiddlewaresIntegrationTest
     // ── Pipeline MVC — IT-PIPE ────────────────────────────────────────────────
 
     [Fact]
-    public async Task IT_PIPE_01_BodyJsonInvalide_Retourne400()
+    public async Task Pipeline_ShouldReturn400_WhenJsonBodyIsInvalid()
     {
         var contenu = new StringContent("{ ceci n'est pas du json }", Encoding.UTF8, "application/json");
 
@@ -206,7 +207,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_PIPE_02_RouteInexistante_Retourne404()
+    public async Task Pipeline_ShouldReturn404_WhenRouteDoesNotExist()
     {
         var reponse = await _factory.CreateAuthenticatedClient().GetAsync("/api/v1/route-qui-nexiste-pas");
 
@@ -214,7 +215,7 @@ public class MiddlewaresIntegrationTest
     }
 
     [Fact]
-    public async Task IT_PIPE_03_GuidMalforme_NeCorrespondPasALaRoute()
+    public async Task Pipeline_ShouldReturn404_WhenGuidIsMalformed()
     {
         var contenu = JsonContent.Create(new { });
 

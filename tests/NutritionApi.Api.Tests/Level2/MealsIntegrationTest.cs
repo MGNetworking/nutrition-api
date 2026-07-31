@@ -10,7 +10,7 @@ using System.Net;
 using System.Net.Http.Json;
 
 /// <summary>
-/// Tests de niveau 2 de <c>MealsController</c> — NTR-111. Couvre IT-ML-01 à IT-ML-16 et la limite
+/// Tests de niveau 2 de <c>MealsController</c> — NTR-111. Couvre la création, la consultation, la modification, la suppression, les items et la limite
 /// de repas sauvegardés du palier d'abonnement.
 /// </summary>
 [Trait("Level", "2")]
@@ -56,10 +56,10 @@ public class MealsIntegrationTest
             .Setup(r => r.GetByIdsAsync(It.IsAny<List<Guid>>()))
             .ReturnsAsync(aliments.ToList());
 
-    // ── Création — IT-ML-01, IT-ML-02, IT-ML-03 ──────────────────────────────
+    // ── Création ──────────────────────────────
 
     [Fact]
-    public async Task IT_ML_01_CreationValide_Retourne201()
+    public async Task PostMeals_ShouldReturn201_WhenRequestIsValid()
     {
         GivenUtilisateurCourant();
         var aliment = Aliment();
@@ -73,7 +73,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_02_LimiteDeRepasSauvegardesAtteinte_Retourne403()
+    public async Task PostMeals_ShouldReturn403_WhenSavedMealLimitIsReached()
     {
         var utilisateur = GivenUtilisateurCourant(SubscriptionTier.Free);
         var aliment = Aliment();
@@ -89,7 +89,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_02_UnRepasPonctuelNestPasSoumisALaLimite()
+    public async Task PostMeals_ShouldReturn201_WhenMealIsNotSavedDespiteLimit()
     {
         var utilisateur = GivenUtilisateurCourant(SubscriptionTier.Free);
         var aliment = Aliment();
@@ -103,7 +103,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_03_AlimentReferenceInexistant_Retourne404()
+    public async Task PostMeals_ShouldReturn404_WhenReferencedFoodItemDoesNotExist()
     {
         GivenUtilisateurCourant();
         GivenCatalogue();   // le catalogue ne renvoie rien
@@ -129,10 +129,10 @@ public class MealsIntegrationTest
         Assert.Equal(HttpStatusCode.UnprocessableEntity, reponse.StatusCode);
     }
 
-    // ── Consultation — IT-ML-04 à IT-ML-08 ───────────────────────────────────
+    // ── Consultation ───────────────────────────────────
 
     [Fact]
-    public async Task IT_ML_04_ListeSansFiltre_Retourne200()
+    public async Task GetMeals_ShouldReturn200_WhenNoFilterIsProvided()
     {
         var utilisateur = GivenUtilisateurCourant();
         _factory.Meals
@@ -147,7 +147,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_05_FiltreSurLesRepasSauvegardes_EstTransmisAuDepot()
+    public async Task GetMeals_ShouldForwardSavedFilterToRepository_WhenSavedIsProvided()
     {
         var utilisateur = GivenUtilisateurCourant();
         bool? filtreRecu = null;
@@ -163,7 +163,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_06_FiltreParDate_EstTransmisAuDepot()
+    public async Task GetMeals_ShouldForwardDateFilterToRepository_WhenDateIsProvided()
     {
         var utilisateur = GivenUtilisateurCourant();
         DateOnly? dateRecue = null;
@@ -179,7 +179,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_07_RepasExistantEtProprietaire_Retourne200()
+    public async Task GetMeal_ShouldReturn200_WhenMealBelongsToUser()
     {
         var utilisateur = GivenUtilisateurCourant();
         var repas = RepasDe(utilisateur.Id, Aliment());
@@ -191,7 +191,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_08_RepasInexistant_Retourne404()
+    public async Task GetMeal_ShouldReturn404_WhenMealDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -214,10 +214,10 @@ public class MealsIntegrationTest
         Assert.Equal(HttpStatusCode.Forbidden, reponse.StatusCode);
     }
 
-    // ── Modification et suppression — IT-ML-09 à IT-ML-12 ────────────────────
+    // ── Modification et suppression ────────────────────
 
     [Fact]
-    public async Task IT_ML_09_ModificationDunRepasExistant_Retourne200()
+    public async Task PatchMeal_ShouldReturn200_WhenMealExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         var repas = RepasDe(utilisateur.Id, Aliment());
@@ -232,7 +232,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_10_ModificationDunRepasInexistant_Retourne404()
+    public async Task PatchMeal_ShouldReturn404_WhenMealDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -245,7 +245,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_11_SuppressionDunRepasExistant_Retourne204()
+    public async Task DeleteMeal_ShouldReturn204_WhenMealExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         var repas = RepasDe(utilisateur.Id, Aliment());
@@ -258,7 +258,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_12_SuppressionDunRepasInexistant_Retourne404()
+    public async Task DeleteMeal_ShouldReturn404_WhenMealDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -269,10 +269,10 @@ public class MealsIntegrationTest
         Assert.Equal(HttpStatusCode.NotFound, reponse.StatusCode);
     }
 
-    // ── Items du repas — IT-ML-13 à IT-ML-16 ─────────────────────────────────
+    // ── Items du repas ─────────────────────────────────
 
     [Fact]
-    public async Task IT_ML_13_AjoutDunItem_Retourne201()
+    public async Task PostMealItems_ShouldReturn201_WhenFoodItemIsValid()
     {
         var utilisateur = GivenUtilisateurCourant();
         var aliment = Aliment();
@@ -290,7 +290,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_14_AjoutDunItemSurUnRepasInexistant_Retourne404()
+    public async Task PostMealItems_ShouldReturn404_WhenMealDoesNotExist()
     {
         GivenUtilisateurCourant();
         var inconnu = Guid.NewGuid();
@@ -303,7 +303,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_15_SuppressionDunItem_Retourne204()
+    public async Task DeleteMealItem_ShouldReturn204_WhenItemExists()
     {
         var utilisateur = GivenUtilisateurCourant();
         var repas = RepasDe(utilisateur.Id, Aliment(), items: 2);
@@ -335,7 +335,7 @@ public class MealsIntegrationTest
     }
 
     [Fact]
-    public async Task IT_ML_16_SuppressionDunItemInexistant_Retourne404()
+    public async Task DeleteMealItem_ShouldReturn404_WhenItemDoesNotExist()
     {
         var utilisateur = GivenUtilisateurCourant();
         var repas = RepasDe(utilisateur.Id, Aliment());

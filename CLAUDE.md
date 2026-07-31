@@ -113,7 +113,7 @@ un dossier.
 | Fichier | Contenu |
 |---|---|
 | `briques/` | Technologies tierces — `redis.md`, `hangfire.md`, `keycloak-admin.md`, `stripe.md`, `environnement-local.md` |
-| `qualite/` | `niveaux-de-tests.md`, `recensement-des-tests.md` |
+| `qualite/` | `niveaux-de-tests.md`, `tests-niveau-1.md`, `tests-niveau-2.md`, `tests-niveau-3.md` |
 | `reference/diagramme-classes.md` | Diagramme Mermaid du modèle domaine |
 | `reference/concept-moteur.md` | Concept "Moteur (Engine)" — patterns Strategy + Factory |
 

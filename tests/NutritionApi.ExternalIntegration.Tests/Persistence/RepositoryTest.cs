@@ -9,7 +9,7 @@ using NutritionApi.Domain.ValueObjects;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
-/// IT-EXT-01 à IT-EXT-04 — les repositories contre un PostgreSQL réel (sous-tâche NTR-72).
+/// Les repositories contre un PostgreSQL réel (sous-tâche NTR-72).
 /// </summary>
 /// <remarks>
 /// Ce que ce niveau ajoute aux tests unitaires : les requêtes sont réellement traduites en SQL et
@@ -21,10 +21,10 @@ using NutritionApi.ExternalIntegration.Tests.Fixtures;
 public sealed class RepositoryTest(IntegrationFactory factory)
 {
     /// <summary>
-    /// IT-EXT-01 — <c>UserRepository.GetByKeycloakIdAsync</c> retrouve un utilisateur existant.
+    /// <c>UserRepository.GetByKeycloakIdAsync</c> retrouve un utilisateur existant.
     /// </summary>
     [Fact]
-    public async Task IT_EXT_01_GetByKeycloakIdAsync_RetourneLUtilisateur()
+    public async Task GetByKeycloakIdAsync_ShouldReturnUser_WhenUserExists()
     {
         var keycloakId = $"it-ext-01-{Guid.NewGuid()}";
         await SeedUserAsync(keycloakId);
@@ -40,7 +40,7 @@ public sealed class RepositoryTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-02 — <c>DietPlanRepository.GetByUserIdAsync</c> ne retourne que les plans du
+    /// <c>DietPlanRepository.GetByUserIdAsync</c> ne retourne que les plans du
     /// propriétaire.
     /// </summary>
     /// <remarks>
@@ -48,7 +48,7 @@ public sealed class RepositoryTest(IntegrationFactory factory)
     /// <c>WHERE</c> absent passerait inaperçu.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_02_GetByUserIdAsync_FiltreSurLeProprietaire()
+    public async Task GetByUserIdAsync_ShouldReturnOnlyOwnedPlans_WhenOtherUsersHavePlans()
     {
         var owner = await SeedUserAsync($"it-ext-02-owner-{Guid.NewGuid()}");
         var other = await SeedUserAsync($"it-ext-02-other-{Guid.NewGuid()}");
@@ -72,14 +72,14 @@ public sealed class RepositoryTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-03 — <c>DietRepository.GetActiveByUserIdAsync</c> ne retourne que le régime actif.
+    /// <c>DietRepository.GetActiveByUserIdAsync</c> ne retourne que le régime actif.
     /// </summary>
     /// <remarks>
     /// L'utilisateur porte aussi un régime archivé : le filtre sur <c>StatusDiet</c> est traduit en
     /// SQL, sur une colonne stockée en entier — ce que seul un vrai PostgreSQL confirme.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_03_GetActiveByUserIdAsync_EcarteLesRegimesArchives()
+    public async Task GetActiveByUserIdAsync_ShouldReturnActiveDiet_WhenArchivedDietsExist()
     {
         var user = await SeedUserAsync($"it-ext-03-{Guid.NewGuid()}");
 
@@ -106,7 +106,7 @@ public sealed class RepositoryTest(IntegrationFactory factory)
     }
 
     /// <summary>
-    /// IT-EXT-04 — les migrations EF Core s'appliquent sur un schéma vierge et créent toutes les
+    /// les migrations EF Core s'appliquent sur un schéma vierge et créent toutes les
     /// tables.
     /// </summary>
     /// <remarks>
@@ -115,7 +115,7 @@ public sealed class RepositoryTest(IntegrationFactory factory)
     /// conformément à la convention appliquée par le contexte.
     /// </remarks>
     [Fact]
-    public async Task IT_EXT_04_MigrationsSurSchemaVierge_CreeToutesLesTables()
+    public async Task Migrations_ShouldCreateAllTables_WhenSchemaIsEmpty()
     {
         await using var database = await TestDatabase.CreateAsync();
 
