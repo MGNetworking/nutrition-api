@@ -298,7 +298,7 @@ reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"covera
 
 Le rapport est généré dans `coverage/report/index.html`.
 
-**Pourquoi la sélection se fait sur le namespace**
+**Comment les niveaux se sélectionnent**
 
 `--filter` est une option native de `dotnet test`. `FullyQualifiedName` désigne le nom complet du
 test, **namespace compris**, et `~` signifie « contient » :
