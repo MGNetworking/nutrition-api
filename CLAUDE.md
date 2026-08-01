@@ -137,5 +137,6 @@ un dossier.
 L'état d'avancement n'est **pas** suivi dans ce fichier — la source de vérité est Jira :
 
 - **Backlog et statuts :** https://maxime-ghalem.atlassian.net/ — projet `NTR`
-- **Accès :** MCP `atlassian` si chargé, sinon API REST (voir `memory/reference_jira.md`)
+- **Accès :** MCP `atlassian` **uniquement**. Aucun appel HTTP direct, même en cas de panne — voir la
+  règle Jira du `CLAUDE.md` global (`~/.claude/CLAUDE.md`). MCP indisponible : s'arrêter et le signaler.
 - Ne consulter Jira que sur demande explicite de Maxime (règle "Docs locaux avant Jira")
