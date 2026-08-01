@@ -9,11 +9,15 @@
 
 Ces règles s'appliquent sans exception à toutes les sessions.
 
-### Mise à jour mémoire — toujours les deux
+### Mise à jour mémoire — hors du dépôt
 
-Quand Maxime demande de "mettre en mémoire", "noter" ou "mettre à jour" une information, mettre à jour **les deux** :
-1. `CLAUDE.md` — ajouter ou modifier la section concernée
-2. `memory/` — mettre à jour le fichier `.md` correspondant + l'index `MEMORY.md`
+Quand Maxime demande de "mettre en mémoire", "noter" ou "mettre à jour" une information, cela ne
+concerne que `memory/`, hors dépôt : le fichier `.md` correspondant, plus son renvoi dans `MEMORY.md`,
+qui en est le seul index.
+
+**Ne rien écrire ici.** `CLAUDE.md` est versionné et partagé : il porte les règles et l'architecture
+du projet, jamais un suivi d'avancement ni un état qui change. Un fichier de mémoire dont le contenu
+n'est plus vrai se réécrit ; un fichier qui n'a plus d'objet se supprime, index compris.
 
 ### Aucune action sans validation explicite
 
