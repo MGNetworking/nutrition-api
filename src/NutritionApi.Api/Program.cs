@@ -149,12 +149,17 @@ app.UseAuthentication();                      // Valide le JWT Bearer
 app.UseAuthorization();                       // Applique les policies et rôles
 
 // Dashboard Hangfire — restreint au rôle admin par HangfireAdminAuthorizationFilter.
-// Placé après UseAuthorization (le filtre lit User) et avant UserResolutionMiddleware
-// (le dashboard n'a pas besoin de la résolution keycloakId → User interne).
+// Placé après UseAuthorization : le filtre lit HttpContext.User, peuplé par UseAuthentication.
+//
+// La dispense de profil est indispensable et ne va pas de soi. Cette ligne étant écrite avant
+// UserResolutionMiddleware, on attendrait du dashboard qu'il réponde sans l'atteindre. C'est faux :
+// l'endpoint est exécuté en fin de pipeline, après tous les middlewares déclarés. Sans dispense,
+// un administrateur se voyait refuser le dashboard par un 401 tant qu'il n'avait pas de profil
+// nutritionnel en base — or l'administration et l'espace client sont disjoints.
 app.MapHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = [new HangfireAdminAuthorizationFilter()]
-});
+}).WithMetadata(new AllowWithoutProfileAttribute());
 
 app.UseMiddleware<UserResolutionMiddleware>(); // Résout keycloakId → User.Id interne
 app.MapControllers();

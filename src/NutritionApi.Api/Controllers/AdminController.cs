@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NutritionApi.Api.Middleware;
 using NutritionApi.Application.DTOS.Admin;
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Application.Interfaces.Services;
@@ -7,9 +8,17 @@ using Swashbuckle.AspNetCore.Annotations;
 
 namespace NutritionApi.Api.Controllers;
 
+/// <remarks>
+/// <see cref="AllowWithoutProfileAttribute"/> porte sur le controller entier : administrer
+/// l'application et en être client sont deux choses distinctes. La table <c>users</c> contient un
+/// profil nutritionnel — date de naissance, taille, allergies — dont un administrateur n'a que
+/// faire. Sans cette dispense, aucun de ces endpoints n'était atteignable tant qu'il n'en possédait
+/// pas un, alors que son rôle Keycloak suffit à l'autoriser.
+/// </remarks>
 [ApiController]
 [Route("api/v1/admin")]
 [Authorize(Roles = "admin")]
+[AllowWithoutProfile]
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
