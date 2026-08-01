@@ -3,25 +3,31 @@ namespace NutritionApi.Application.Tests;
 using Moq;
 using NutritionApi.Application.DTOS.DietPlans;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Domain.ValueObjects;
 
+[Trait("Level", "1")]
 public class DietPlansServiceTest
 {
     private readonly Mock<IDietPlanRepository> _dietPlanRepositoryMock = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _userRepositoryMock = new(MockBehavior.Strict);
     private readonly SubscriptionGuard _subscriptionGuard = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new(MockBehavior.Strict);
     private readonly DietPlansService _dietPlansService;
 
     public DietPlansServiceTest()
     {
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
+
         _dietPlansService = new DietPlansService(
             _dietPlanRepositoryMock.Object,
             _userRepositoryMock.Object,
-            _subscriptionGuard);
+            _subscriptionGuard,
+            _unitOfWorkMock.Object);
     }
 
     private static (User user, DietPlan plan, CreateDietPlanRequest createRequest, UpdateDietPlanRequest updateRequest) BuildFixtures(string keycloakId = "keycloak-123")
@@ -80,6 +86,7 @@ public class DietPlansServiceTest
         _dietPlanRepositoryMock.Verify(r => r.CountByUserIdAsync(user.Id), Times.Once);
         _userRepositoryMock.Verify(r => r.GetByIdAsync(user.Id), Times.Once);
         _dietPlanRepositoryMock.Verify(r => r.AddAsync(It.IsAny<DietPlan>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -188,6 +195,7 @@ public class DietPlansServiceTest
 
         Assert.IsType<DietPlanResponse>(result);
         _dietPlanRepositoryMock.Verify(r => r.UpdateAsync(plan), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -224,6 +232,7 @@ public class DietPlansServiceTest
         await _dietPlansService.DeleteAsync(user.Id, plan.Id);
 
         _dietPlanRepositoryMock.Verify(r => r.DeleteAsync(plan.Id), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]

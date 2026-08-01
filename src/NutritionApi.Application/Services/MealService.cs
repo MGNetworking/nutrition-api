@@ -1,5 +1,6 @@
 using NutritionApi.Application.DTOS.Meals;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Interfaces.Services;
 using NutritionApi.Application.Services.Nutrition;
@@ -18,17 +19,20 @@ public class MealService : IMealService
     private readonly IFoodItemRepository _foodItemRepository;
     private readonly IUserRepository _userRepository;
     private readonly SubscriptionGuard _subscriptionGuard;
+    private readonly IUnitOfWork _unitOfWork;
 
     public MealService(
         IMealRepository mealRepository,
         IFoodItemRepository foodItemRepository,
         IUserRepository userRepository,
-        SubscriptionGuard subscriptionGuard)
+        SubscriptionGuard subscriptionGuard,
+        IUnitOfWork unitOfWork)
     {
         _mealRepository = mealRepository;
         _foodItemRepository = foodItemRepository;
         _userRepository = userRepository;
         _subscriptionGuard = subscriptionGuard;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>Crée un repas avec ses MealItems et calcule la NutritionInfo de chaque item.</summary>
@@ -79,6 +83,8 @@ public class MealService : IMealService
             request.IsSaved);
 
         await _mealRepository.AddAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 
@@ -134,6 +140,8 @@ public class MealService : IMealService
             meal.ChangeConsumedAt(request.ConsumedAt.Value);
 
         await _mealRepository.UpdateAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 
@@ -151,6 +159,7 @@ public class MealService : IMealService
             throw new ForbiddenException("You do not have access to this meal.");
 
         await _mealRepository.DeleteAsync(mealId);
+        await _unitOfWork.SaveChangesAsync();
     }
 
     /// <summary>Ajoute un MealItem à un repas existant avec calcul de la NutritionInfo.</summary>
@@ -176,6 +185,8 @@ public class MealService : IMealService
         meal.AddMealItem(new MealItem(meal.Id, foodItem.Id, request.Quantity, nutrition) { FoodItem = foodItem });
 
         await _mealRepository.UpdateAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 
@@ -185,6 +196,7 @@ public class MealService : IMealService
     /// <param name="itemId">Identifiant du MealItem à retirer.</param>
     /// <returns>Le repas mis à jour.</returns>
     /// <exception cref="NotFoundException">Le repas n'existe pas.</exception>
+    /// <exception cref="NotFoundException">Le MealItem n'appartient pas à ce repas.</exception>
     /// <exception cref="ForbiddenException">Le repas n'appartient pas à l'utilisateur.</exception>
     public async Task<MealResponse> RemoveItemAsync(Guid userId, Guid mealId, Guid itemId)
     {
@@ -194,9 +206,23 @@ public class MealService : IMealService
         if (meal.UserId != userId)
             throw new ForbiddenException("You do not have access to this meal.");
 
+        // L'absence de l'item est un 404, pas une donnée invalide. Le domaine ne peut pas le
+        // signaler lui-même : NotFoundException vit dans Application, que Domain ne référence pas.
+        // La vérification est donc portée ici, la garde du domaine restant le dernier recours.
+        if (meal.MealItems.All(item => item.Id != itemId))
+            throw new NotFoundException("Meal item not found.");
+
+        // Le domaine interdit de vider un repas et le signale par une InvalidOperationException,
+        // trop générique pour être traduite globalement — elle recouvre aussi de vrais défauts.
+        // La demande est ici recevable mais inexploitable en l'état : 422.
+        if (meal.MealItems.Count <= 1)
+            throw new UnprocessableException("A meal must keep at least one item. Delete the meal instead.");
+
         meal.RemoveMealItem(itemId);
 
         await _mealRepository.UpdateAsync(meal);
+        await _unitOfWork.SaveChangesAsync();
+
         return MealResponse.From(meal);
     }
 }

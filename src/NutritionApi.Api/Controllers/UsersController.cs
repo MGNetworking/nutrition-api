@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Api.Extensions;
+using NutritionApi.Api.Middleware;
 using NutritionApi.Application.DTOS.FoodItems;
 using NutritionApi.Application.DTOS.Users;
 using NutritionApi.Application.Interfaces.Services;
@@ -27,6 +28,8 @@ public class UsersController : ControllerBase
 
     /// <summary>Création de l'utilisateur</summary>
     [HttpPost("me")]
+    // Seul endpoint appelable sans profil existant : c'est celui qui le crée.
+    [AllowWithoutProfile]
     [SwaggerOperation(
         Summary = "Créer le profil utilisateur",
         Description = "Crée le profil à la première connexion Keycloak, avec la première pesée (WeightEntry) issue du poids déclaré.")]

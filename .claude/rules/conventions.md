@@ -19,6 +19,36 @@ Trois frontières d'interface :
 
 ---
 
+## Arborescence — décision avant création
+
+Créer des fichiers est une décision d'architecture, pas un détail d'exécution.
+
+**Avant d'écrire le premier fichier**, présenter l'arborescence cible et la faire valider si
+l'une de ces conditions est vraie :
+
+- l'implémentation crée **plus de 2 fichiers** ;
+- elle ajoute dans un dossier existant des fichiers d'une **nature différente** de ceux déjà
+  présents (ex. : un lecteur de fichier dans un dossier de jobs) ;
+- elle porte le contenu d'un dossier à **plus de 5 fichiers**.
+
+Présenter l'arborescence comme un **choix**, avec son alternative — jamais comme une simple liste
+de fichiers à créer. Un dossier doit pouvoir se lire ainsi : « tout ce qui est ici appartient à X,
+et rien d'autre ».
+
+La structure décrite dans la doc de design est un **point de départ, pas une contrainte** : si
+l'implémentation réelle déborde de ce qu'elle prévoyait, le signaler **avant** de coder.
+
+**Exemple de référence (NTR-55)** — le moteur de jobs a été séparé des jobs métier :
+
+```
+Infrastructure/
+├── Scheduling/          ← mécanique partagée (supervision, filtre dashboard) — pas des jobs
+└── Jobs/
+    └── <NomDuJob>/      ← un dossier par job, avec tout ce qui lui appartient
+```
+
+---
+
 ## Pattern constructeur (entités Domain)
 
 - `Id` → `Guid.NewGuid()` directement dans le constructeur

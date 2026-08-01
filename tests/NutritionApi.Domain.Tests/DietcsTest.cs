@@ -5,6 +5,7 @@ using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Domain.ValueObjects;
 
+[Trait("Level", "1")]
 public class DietcsTest
 {
     static int ProteinPercentage = 20;

@@ -4,6 +4,7 @@ using NutritionApi.Application.Exceptions;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Enums;
 
+[Trait("Level", "1")]
 public class SubscriptionGuardTest
 {
     private readonly SubscriptionGuard _subscriptionGuard = new();

@@ -3,12 +3,14 @@ namespace NutritionApi.Application.Tests;
 using Moq;
 using NutritionApi.Application.DTOS.FoodItems;
 using NutritionApi.Application.Exceptions;
+using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.ExternalServices;
 using NutritionApi.Application.Interfaces.Repositories;
 using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 
+[Trait("Level", "1")]
 public class FoodItemServiceTest
 {
     private readonly Mock<IFoodItemRepository> _foodItemRepositoryMock = new(MockBehavior.Strict);
@@ -16,16 +18,20 @@ public class FoodItemServiceTest
     private readonly Mock<IFoodCacheService> _foodCacheServiceMock = new(MockBehavior.Strict);
     private readonly Mock<IUserRepository> _userRepositoryMock = new(MockBehavior.Strict);
     private readonly SubscriptionGuard _subscriptionGuard = new();
+    private readonly Mock<IUnitOfWork> _unitOfWorkMock = new(MockBehavior.Strict);
     private readonly FoodItemService _foodItemService;
 
     public FoodItemServiceTest()
     {
+        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).Returns(Task.CompletedTask);
+
         _foodItemService = new FoodItemService(
             _foodItemRepositoryMock.Object,
             _savedFoodItemRepositoryMock.Object,
             _foodCacheServiceMock.Object,
             _userRepositoryMock.Object,
-            _subscriptionGuard);
+            _subscriptionGuard,
+            _unitOfWorkMock.Object);
     }
 
     private static FoodItem BuildFoodItem()
@@ -125,6 +131,7 @@ public class FoodItemServiceTest
 
         Assert.IsType<SavedFoodItemResponse>(result);
         _savedFoodItemRepositoryMock.Verify(r => r.AddAsync(It.IsAny<SavedFoodItem>()), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]
@@ -183,6 +190,7 @@ public class FoodItemServiceTest
         await _foodItemService.RemoveSavedAsync(userId, savedFoodItem.Id);
 
         _savedFoodItemRepositoryMock.Verify(r => r.DeleteAsync(savedFoodItem.Id), Times.Once);
+        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Once);
     }
 
     [Fact]

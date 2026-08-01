@@ -2,6 +2,7 @@ using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class NutritionInfoTest
 {
     // --- Constructeur ---

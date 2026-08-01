@@ -20,6 +20,11 @@ public interface IUserRepository
     /// <returns>Nombre d'utilisateurs dont <c>DeletedAt</c> est renseigné et date de moins de 30 jours.</returns>
     Task<int> CountInGracePeriodAsync();
 
+    /// <summary>Retourne les comptes dont la demande de suppression précède une date donnée.</summary>
+    /// <param name="limit">Date limite (UTC) — les comptes marqués avant sont retournés.</param>
+    /// <returns>Les utilisateurs concernés, ou une liste vide.</returns>
+    Task<IReadOnlyList<User>> GetExpiredForPurgeAsync(DateTime limit);
+
     /// <summary>Retourne un utilisateur par son identifiant.</summary>
     /// <param name="id">Identifiant de l'utilisateur.</param>
     /// <returns>L'utilisateur correspondant, ou <c>null</c> s'il n'existe pas.</returns>
@@ -37,4 +42,8 @@ public interface IUserRepository
     /// <summary>Met à jour un utilisateur existant.</summary>
     /// <param name="user">Utilisateur avec les données modifiées.</param>
     Task UpdateAsync(User user);
+
+    /// <summary>Supprime un utilisateur et les données qui en dépendent.</summary>
+    /// <param name="user">Utilisateur à supprimer.</param>
+    Task DeleteAsync(User user);
 }

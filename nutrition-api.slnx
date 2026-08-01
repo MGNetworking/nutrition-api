@@ -10,5 +10,6 @@
     <Project Path="tests/NutritionApi.Application.Tests/NutritionApi.Application.Tests.csproj" />
     <Project Path="tests/NutritionApi.Domain.Tests/NutritionApi.Domain.Tests.csproj" />
     <Project Path="tests/NutritionApi.Infrastructure.Tests/NutritionApi.Infrastructure.Tests.csproj" />
+    <Project Path="tests/NutritionApi.ExternalIntegration.Tests/NutritionApi.ExternalIntegration.Tests.csproj" />
   </Folder>
 </Solution>

@@ -18,4 +18,7 @@ public interface IFoodCacheService
     /// <summary>Invalide le cache pour un mot-clé donné.</summary>
     /// <param name="keyword">Mot-clé dont le cache doit être invalidé.</param>
     Task InvalidateAsync(string keyword);
+
+    /// <summary>Invalide l'ensemble des recherches mises en cache.</summary>
+    Task InvalidateAllSearchesAsync();
 }

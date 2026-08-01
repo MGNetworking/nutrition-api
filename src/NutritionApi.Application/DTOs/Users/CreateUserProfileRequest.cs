@@ -8,7 +8,7 @@ namespace NutritionApi.Application.DTOS.Users;
 /// <param name="activityLevel">Niveau d'activité physique (utilisé pour le calcul du TDEE).</param>
 /// <param name="height">Taille de l'utilisateur, en centimètres.</param>
 /// <param name="allergies">Allergènes de l'utilisateur.</param>
-/// <param name="dietaryPreferences">Préférences alimentaires libres.</param>
+/// <param name="dietaryPreferences">Régimes alimentaires déclarés, en liste fermée.</param>
 /// <param name="weight">Poids initial, en kilogrammes — crée la première pesée.</param>
 public record CreateUserProfileRequest(
         DateOnly birthDate,
@@ -16,5 +16,5 @@ public record CreateUserProfileRequest(
         ActivityLevel activityLevel,
         float height,
         List<Allergen> allergies,
-        List<string> dietaryPreferences,
+        List<DietaryPreference> dietaryPreferences,
         float weight);

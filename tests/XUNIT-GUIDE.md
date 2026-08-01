@@ -35,17 +35,44 @@
 
 ### Structure de projet recommandée
 
+Le projet distingue **quatre niveaux de tests**. Le rangement les sépare, et un marqueur les rend
+sélectionnables.
+
 ```
 tests/
-├── NutritionApi.Domain.Tests/
-│   └── DietPlanTest.cs
-├── NutritionApi.Application.Tests/
-│   ├── DietPlansServiceTest.cs
-│   ├── SubscriptionGuardTest.cs
-│   └── UserServiceTest.cs
-└── NutritionApi.Infrastructure.Tests/
-    └── (Testcontainers — intégration BDD)
+├── NutritionApi.Domain.Tests/               niveau 1
+├── NutritionApi.Application.Tests/          niveau 1
+├── NutritionApi.Infrastructure.Tests/       niveau 1 — code pur uniquement
+├── NutritionApi.Api.Tests/
+│   ├── Level1/                              controllers et middlewares isolés
+│   └── Level2/                              pipeline HTTP, doublures aux frontières
+│       └── Fixtures/
+└── NutritionApi.ExternalIntegration.Tests/  niveau 3 — PostgreSQL, Redis, Keycloak réels
+    └── Fixtures/
 ```
+
+**Chaque classe de test porte son niveau :**
+
+```csharp
+[Trait("Level", "1")]
+public class UserServiceTest { … }
+```
+
+C'est ce marqueur qui pilote les filtres, pas le dossier :
+
+```bash
+dotnet test --filter "Level=1"     # unitaires
+dotnet test --filter "Level=3"     # exige la pile docker-compose
+dotnet test --filter "Level!=3"    # tout ce qui tourne sans Docker
+```
+
+Le dossier dit où ranger, le marqueur dit quoi exécuter. Les deux doivent concorder, mais c'est le
+marqueur qui fait foi : un test mal rangé reste correctement filtré.
+
+> **Le niveau 3 ne vit pas dans `Infrastructure.Tests`**, malgré les apparences. Ses fixtures
+> reposent sur `WebApplicationFactory<Program>`, donc sur la couche API : les y placer obligerait le
+> projet de tests d'Infrastructure à référencer l'API, inversant la dépendance que l'architecture
+> tient. D'où un projet distinct.
 
 ### Configuration xUnit (xunit.runner.json)
 
@@ -86,13 +113,34 @@ public async Task CreateAsync_ShouldReturnDietPlanResponse_WhenRequestIsValid()
 
 ### Nommage des tests
 
-Convention : `Méthode_Résultat_Condition`
+Une seule convention, **tous niveaux confondus** : `Méthode_Résultat_Condition`, **en anglais**.
 
 ```
 CreateAsync_ShouldReturnDietPlanResponse_WhenRequestIsValid
 CreateAsync_ShouldThrow_WhenUserIdIsEmpty
 GetByIdAsync_ShouldReturnNull_WhenPlanDoesNotExist
 ```
+
+**Pour un test d'intégration, « méthode » désigne l'endpoint.** Un tel test ne traverse pas une
+méthode mais une route, et souvent plusieurs classes :
+
+```
+GetAdminDashboard_ShouldReturn403_WhenUserIsNotAdmin
+PostWeightEntries_ShouldReturn409_WhenEntryExistsForSameDate
+GetUsersMe_ShouldReturn503_WhenDatabaseIsUnreachable
+```
+
+Quand aucun endpoint n'est en cause — un repository, un job, un service de fond — on revient au nom
+de la méthode éprouvée :
+
+```
+GetByKeycloakIdAsync_ShouldReturnUser_WhenUserExists
+GetJobsStatusAsync_ShouldReturnScheduled_WhenJobHasNeverRun
+OffImportJob_ShouldPersistFoodItems_WhenTriggeredManually
+```
+
+**Le résultat attendu vient toujours avant la condition.** Un rapport de test doit se lire sans
+ouvrir les fichiers.
 
 ---
 
@@ -446,6 +494,15 @@ _dietPlanRepositoryMock.VerifyAll();
 ---
 
 ## 11. Testcontainers — Tests d'intégration
+
+> ⚠️ **Non retenu par ce projet.** Les tests d'intégration de niveau 3 s'appuient sur le
+> `docker-compose.yml` du projet (PostgreSQL, Redis, Keycloak), réutilisé en CI — décision
+> d'architecture du 2026-07-21. Testcontainers a été écarté car des conteneurs isolés ne
+> valident ni la configuration Docker, ni le réseau entre composants, ni la chaîne JWT réelle.
+> Voir `docs/pages/backend/features/interne/niveaux-de-tests.md`.
+>
+> Cette section est conservée à titre de **référence xUnit générale**, pas comme la marche à
+> suivre du projet.
 
 Testcontainers lance un vrai conteneur Docker pour les tests. Idéal pour tester les repositories EF Core contre PostgreSQL.
 

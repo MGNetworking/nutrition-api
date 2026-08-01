@@ -3,6 +3,7 @@ using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class MealItemTest
 {
     static NutritionInfo DefaultNutrition() => new(200.0f, 20, 15, 8);

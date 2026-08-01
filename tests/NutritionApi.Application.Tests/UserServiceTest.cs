@@ -10,6 +10,7 @@ using NutritionApi.Application.Services;
 using NutritionApi.Domain.Entity;
 using NutritionApi.Domain.Enums;
 
+[Trait("Level", "1")]
 public class UserServiceTest
 {
     private readonly Mock<IUserRepository> _userRepositoryMock;
@@ -37,7 +38,7 @@ public class UserServiceTest
         var activityLevel = ActivityLevel.LightlyActive;
         var height = 180f;
         var allergies = new List<Allergen>();
-        var DietaryPreferences = new List<string>();
+        var DietaryPreferences = new List<DietaryPreference>();
 
         var createUser = new CreateUserProfileRequest(
                 birthDate: birthDate,
