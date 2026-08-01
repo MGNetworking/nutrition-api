@@ -1,11 +1,15 @@
 namespace NutritionApi.ExternalIntegration.Tests.Fixtures;
 
+using Hangfire;
+using Hangfire.AspNetCore;
+using Hangfire.Logging;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.Infrastructure.Persistence;
 
@@ -38,6 +42,15 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
     private static string RedisEndpoint =>
         Environment.GetEnvironmentVariable("NUTRITION_TEST_REDIS") ?? "localhost:6336";
 
+    /// <summary>
+    /// Première fabrique construite dans le processus — celle que porte la collection, partagée par
+    /// tous les cas. Les fabriques créées ensuite par un test sont secondaires et éphémères.
+    /// </summary>
+    private static IntegrationFactory? _partagee;
+
+    /// <summary>Vrai tant que la fabrique partagée n'a pas été libérée.</summary>
+    private static bool _partageeVivante;
+
     /// <summary>Base éphémère de cette exécution.</summary>
     public TestDatabase Database { get; }
 
@@ -61,7 +74,15 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
     /// synchronisation de xUnit exposerait à un interblocage.
     /// </remarks>
     public IntegrationFactory()
-        => Database = Task.Run(TestDatabase.CreateAsync).GetAwaiter().GetResult();
+    {
+        Database = Task.Run(TestDatabase.CreateAsync).GetAwaiter().GetResult();
+
+        if (_partagee is not null)
+            return;
+
+        _partagee = this;
+        _partageeVivante = true;
+    }
 
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -133,10 +154,47 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
         // connexions ouvertes, et PostgreSQL refuserait la suppression de la base.
         await base.DisposeAsync();
 
+        if (ReferenceEquals(this, _partagee))
+            _partageeVivante = false;
+        else
+            RendreLesStatiquesHangfireALaFabriquePartagee();
+
         Tokens.Dispose();
 
         if (Database is not null)
             await Database.DisposeAsync();
+    }
+
+    /// <summary>
+    /// Repointe les statiques de Hangfire sur la fabrique partagée, après la libération d'une
+    /// fabrique secondaire.
+    /// </summary>
+    /// <remarks>
+    /// Hangfire retient deux références <b>de processus</b>, réécrites par chaque hôte construit :
+    /// <see cref="JobStorage.Current"/> et le fournisseur de journaux de <see cref="LogProvider"/>.
+    /// Un second hôte les fait basculer sur les siens ; sa libération laisse Hangfire tenir un
+    /// <c>ILoggerFactory</c> disposé et un storage dont la base est supprimée.
+    /// <para>
+    /// La conséquence était un job perdu, et NTR-156 en entier : le worker du serveur partagé
+    /// dépilait un job — transaction validée, <c>fetchedat</c> écrit — puis échouait sur
+    /// <c>ObjectDisposedException</c> en construisant le job dépilé, qui demande un logger. Aucun
+    /// objet ne subsistait pour remettre le job en file : il restait invisible trente minutes, sans
+    /// état <c>Processing</c>, sans échec, pendant que le serveur battait normalement.
+    /// </para>
+    /// <para>
+    /// La production n'est pas concernée : un processus n'y héberge qu'une application, dont le
+    /// <c>ILoggerFactory</c> vit aussi longtemps qu'elle.
+    /// </para>
+    /// </remarks>
+    private static void RendreLesStatiquesHangfireALaFabriquePartagee()
+    {
+        if (_partagee is null || !_partageeVivante)
+            return;
+
+        JobStorage.Current = _partagee.Services.GetRequiredService<JobStorage>();
+
+        LogProvider.SetCurrentLogProvider(
+            new AspNetCoreLogProvider(_partagee.Services.GetRequiredService<ILoggerFactory>()));
     }
 
     /// <summary>Source de dump alimentée en mémoire, à la place du téléchargement réel.</summary>

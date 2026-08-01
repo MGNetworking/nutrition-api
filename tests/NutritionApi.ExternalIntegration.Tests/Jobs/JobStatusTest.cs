@@ -1,4 +1,4 @@
-namespace NutritionApi.ExternalIntegration.Tests.Jobs;
+﻿namespace NutritionApi.ExternalIntegration.Tests.Jobs;
 
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
@@ -89,33 +89,23 @@ public sealed class JobStatusTest(IntegrationFactory factory)
     /// alors que <c>lastRun</c> était renseigné. Il joint désormais <c>hangfire.job</c> sur
     /// <c>LastJobId</c> pour obtenir l'état réel du run.
     /// <para>
-    /// <b>Ce test démarre sa propre application.</b> C'est le seul de la suite qui dépende d'un
-    /// traitement de fond : le serveur Hangfire doit prendre le job déclenché et le mener à son terme.
-    /// Or d'autres cas arrêtent PostgreSQL et Keycloak ; après ces coupures, le serveur Hangfire de
-    /// l'application partagée ne reprend plus les jobs, et l'attente expirait.
-    /// </para>
-    /// <para>
-    /// Une application dédiée lui donne son propre serveur Hangfire et sa propre base, que rien
-    /// d'autre ne touche. Coût : un démarrage d'hôte supplémentaire.
+    /// C'est le seul cas de la suite qui dépende d'un traitement de fond : le serveur Hangfire doit
+    /// prendre le job déclenché et le mener à son terme. Il s'exécutait autrefois sur une
+    /// application dédiée, parce que le serveur partagé cessait de traiter en cours de suite — cause
+    /// élucidée par NTR-156, corrigée dans <c>IntegrationFactory</c>.
     /// </para>
     /// </remarks>
     [Fact]
     public async Task GetJobsStatusAsync_ShouldReturnSucceeded_WhenJobRanSuccessfully()
     {
-        await using var isolee = new IntegrationFactory();
-
-        // Construire un client démarre l'hôte, donc le serveur Hangfire et l'enregistrement des
-        // jobs récurrents. Sans cela, il n'y aurait rien à déclencher.
-        isolee.CreateClient().Dispose();
-
         // Source de dump vide : l'import se termine sans rien écrire, ce qui suffit à produire un
         // run réussi.
-        isolee.DumpLines.Clear();
+        factory.DumpLines.Clear();
 
-        isolee.Services.GetRequiredService<IRecurringJobManager>()
-              .Trigger(IJobMonitoringService.ImportOffJobName);
+        factory.Services.GetRequiredService<IRecurringJobManager>()
+               .Trigger(IJobMonitoringService.ImportOffJobName);
 
-        var (scope, monitoring) = isolee.Resolve<IJobMonitoringService>();
+        var (scope, monitoring) = factory.Resolve<IJobMonitoringService>();
 
         using (scope)
         {
@@ -139,7 +129,7 @@ public sealed class JobStatusTest(IntegrationFactory factory)
 
             Assert.True(
                 importOff is not null,
-                $"Aucun run terminé après 60 s. Contenu du hash :\n{await DumpHashAsync(isolee)}");
+                $"Aucun run terminé après 60 s. Contenu du hash :\n{await DumpHashAsync(factory)}");
 
             Assert.Equal("Succeeded", importOff!.Status);
             Assert.NotNull(importOff.LastRun);
