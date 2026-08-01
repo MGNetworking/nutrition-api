@@ -1,14 +1,15 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/NutritionApi.Domain/NutritionApi.Domain.csproj" />
-    <Project Path="src/NutritionApi.Application/NutritionApi.Application.csproj" />
-    <Project Path="src/NutritionApi.Infrastructure/NutritionApi.Infrastructure.csproj" />
     <Project Path="src/NutritionApi.Api/NutritionApi.Api.csproj" />
+    <Project Path="src/NutritionApi.Application/NutritionApi.Application.csproj" />
+    <Project Path="src/NutritionApi.Domain/NutritionApi.Domain.csproj" />
+    <Project Path="src/NutritionApi.Infrastructure/NutritionApi.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/NutritionApi.Domain.Tests/NutritionApi.Domain.Tests.csproj" />
-    <Project Path="tests/NutritionApi.Application.Tests/NutritionApi.Application.Tests.csproj" />
-    <Project Path="tests/NutritionApi.Infrastructure.Tests/NutritionApi.Infrastructure.Tests.csproj" />
     <Project Path="tests/NutritionApi.Api.Tests/NutritionApi.Api.Tests.csproj" />
+    <Project Path="tests/NutritionApi.Application.Tests/NutritionApi.Application.Tests.csproj" />
+    <Project Path="tests/NutritionApi.Domain.Tests/NutritionApi.Domain.Tests.csproj" />
+    <Project Path="tests/NutritionApi.Infrastructure.Tests/NutritionApi.Infrastructure.Tests.csproj" />
+    <Project Path="tests/NutritionApi.ExternalIntegration.Tests/NutritionApi.ExternalIntegration.Tests.csproj" />
   </Folder>
 </Solution>

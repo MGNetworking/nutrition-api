@@ -3,10 +3,11 @@ using NutritionApi.Domain.Enums;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class UserTest
 {
     float Height = 100;
-    public User CreateUser(List<Allergen>? allergens = null, List<string>? preferences = null)
+    public User CreateUser(List<Allergen>? allergens = null, List<DietaryPreference>? preferences = null)
     {
         return new User(
             keycloakId: "test-user",
@@ -15,7 +16,7 @@ public class UserTest
             activityLevel: ActivityLevel.Sedentary,
             Height,
             allergies: allergens ?? new List<Allergen>(),
-            dietaryPreferences: preferences ?? new List<string>());
+            dietaryPreferences: preferences ?? new List<DietaryPreference>());
     }
 
     public static IEnumerable<object[]> FutureDates =>
@@ -37,7 +38,7 @@ public class UserTest
             activityLevel: ActivityLevel.Sedentary,
             Height,
             allergies: new List<Allergen>(),
-            dietaryPreferences: new List<string>())
+            dietaryPreferences: new List<DietaryPreference>())
         );
     }
 
@@ -188,7 +189,7 @@ public class UserTest
     [Fact]
     public void SetDietaryPreference_OkTest()
     {
-        var preferences = new List<string> { "VEGAN" };
+        var preferences = new List<DietaryPreference> { DietaryPreference.Vegan };
         User user = CreateUser();
         user.SetDietaryPreference(preferences);
         Assert.Equal(preferences, user.DietaryPreferences);
@@ -197,7 +198,7 @@ public class UserTest
     [Fact]
     public void AddDietaryPreference_ThrowArgumentExceptionTest()
     {
-        string prefer = "Chocolat";
+        DietaryPreference prefer = DietaryPreference.Halal;
         User user = CreateUser();
         user.AddDietaryPreference(prefer);
         Assert.Throws<ArgumentException>(() => user.AddDietaryPreference(prefer));
@@ -207,7 +208,7 @@ public class UserTest
     [Fact]
     public void AddDietaryPreference_OkTest()
     {
-        string prefer = "Chocolat";
+        DietaryPreference prefer = DietaryPreference.Halal;
         User user = CreateUser();
         user.AddDietaryPreference(prefer);
         Assert.Contains(prefer, user.DietaryPreferences);
@@ -216,17 +217,17 @@ public class UserTest
     [Fact]
     public void RemoveDietaryPreference_ThrowArgumentExceptionTest()
     {
-        string prefer = "VEGETARIAN";
+        DietaryPreference prefer = DietaryPreference.Vegetarian;
         User user = CreateUser();
         user.AddDietaryPreference(prefer);
-        Assert.Throws<ArgumentException>(() => user.RemoveDietaryPreference("VEGAN"));
+        Assert.Throws<ArgumentException>(() => user.RemoveDietaryPreference(DietaryPreference.Vegan));
     }
 
     [Fact]
     public void RemoveDietaryPreference_OkTest()
     {
-        string prefer = "VEGAN";
-        User user = CreateUser(preferences: new List<string> { prefer });
+        DietaryPreference prefer = DietaryPreference.Vegan;
+        User user = CreateUser(preferences: new List<DietaryPreference> { prefer });
         user.RemoveDietaryPreference(prefer);
         Assert.DoesNotContain(prefer, user.DietaryPreferences);
     }
@@ -248,6 +249,25 @@ public class UserTest
 
         Assert.NotNull(user.DeletedAt);
     }
+
+
+    [Fact]
+    public void Reactivate_ThrowInvalidOperationExceptionTest()
+    {
+
+        User user = CreateUser();
+        Assert.Throws<InvalidOperationException>(() => user.Reactivate());
+    }
+
+    [Fact]
+    public void Reactivate_OKTest()
+    {
+        User user = CreateUser();
+        user.MarkAsDeleted();
+        user.Reactivate();
+        Assert.Null(user.DeletedAt);
+    }
+
 
     [Fact]
     public void Constructor_DeletedAt_IsNullByDefaultTest()

@@ -1,4 +1,9 @@
 # ============================================================
+# Agent — données personnelles (non versionnées)
+# ============================================================
+.ai/user/
+
+# ============================================================
 # .NET / C#
 # ============================================================
 bin/
@@ -140,19 +145,6 @@ $RECYCLE.BIN/
 *~
 
 # ============================================================
-# Notes locales (non versionnées)
-# ============================================================
-ARCHITECTURE-DDD-4-COUCHES.md
-ARCHITECTURE-CQRS.md
-ARCHITECTURE-HEXAGONALE.md
-CONCEPTS.md
-AUTOMATISATION.md
-TICKETS-A-MODIFIER.md
-TDD.md
-SDD.md
-GIT-WORKFLOW.md
-
-# ============================================================
 # Secrets & configuration locale
 # ============================================================
 .env
@@ -179,3 +171,6 @@ TestResults/
 
 # Fichiers locaux
 CONFIGURATION.md
+
+# Passations de session Claude Code — locales, jamais versionnees (voir CLAUDE.md)
+.claude/sessions/

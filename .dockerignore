@@ -1,0 +1,32 @@
+# Exclusions du contexte de build Docker.
+#
+# Critique : bin/ et obj/ produits sous Windows contiennent des chemins absolus
+# de la machine hôte (dossiers de repli NuGet de Visual Studio). Copiés dans une
+# image Linux, ils font échouer la restauration NuGet avec
+# « Unable to find fallback package folder 'C:\Program Files (x86)\...' ».
+
+# Artefacts de compilation
+**/bin/
+**/obj/
+**/out/
+
+# Environnement de développement
+.git/
+.github/
+.vs/
+.vscode/
+.idea/
+**/*.user
+
+# Fichiers de développement sans utilité dans l'image
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+scripts/
+postman/
+keycloak/
+seed-dev.sql
+*.md
+
+# Tests — l'image de production n'en a pas besoin
+tests/

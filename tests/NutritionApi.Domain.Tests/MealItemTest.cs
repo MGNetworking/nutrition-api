@@ -3,6 +3,7 @@ using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class MealItemTest
 {
     static NutritionInfo DefaultNutrition() => new(200.0f, 20, 15, 8);
@@ -29,7 +30,7 @@ public class MealItemTest
         Guid foodItemId = Guid.NewGuid();
         NutritionInfo nutrition = DefaultNutrition();
 
-        MealItem item = new MealItem(mealId, foodItemId, 150.0f, nutrition);
+        MealItem item = CreateMealItem(mealId: mealId, foodItemId: foodItemId, nutrition: nutrition);
 
         Assert.NotEqual(Guid.Empty, item.Id);
         Assert.Equal(mealId, item.MealId);
@@ -62,9 +63,11 @@ public class MealItemTest
     public void Constructor_Nutrition_Null_ThrowsArgumentNullExceptionTest()
     {
         Assert.Throws<ArgumentNullException>(() => new MealItem(
-            mealId: Guid.NewGuid(),
-            foodItemId: Guid.NewGuid(),
-            quantity: 150.0f,
-            nutrition: null!));
+              mealId: Guid.NewGuid(),
+              foodItemId: Guid.NewGuid(),
+              quantity: 150.0f,
+              nutrition: null!));
     }
+
+
 }

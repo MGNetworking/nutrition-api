@@ -1,0 +1,1328 @@
+{
+  "info": {
+    "_postman_id": "nutrition-api-dev-collection",
+    "name": "Nutrition API — Développement",
+    "description": "Collection de développement de la Nutrition API.\n\nOutil de développement et de documentation : elle n'est pas exécutée en CI. Les tests automatisés sont en xUnit (voir docs/pages/backend/features/interne/niveaux-de-tests.md).\n\n## Démarrage\n\n1. Lancer l'environnement : `./scripts/dev-up.sh`\n2. Lancer l'API : `dotnet run --project src/NutritionApi.Api`\n3. Sélectionner l'environnement « Nutrition API — Dev local »\n4. Exécuter une requête du dossier **Authentification** — le jeton est stocké automatiquement et appliqué à toutes les requêtes suivantes\n\n## Comptes de test\n\n| Compte | Rôle Keycloak | Abonnement |\n|---|---|---|\n| test-user | user | Free |\n| test-pro | user | Pro |\n| test-admin | admin | Free |\n\nMot de passe : `test`\n\n## Points d'attention\n\n- **Les enums sont sérialisés en nombres**, pas en chaînes. Exemple : `gender: 1` (Male), `mealType: 2` (Lunch). Voir la description de chaque requête.\n- Les identifiants par défaut de l'environnement correspondent aux données de `seed-dev.sql` : les requêtes fonctionnent sans réglage préalable.\n- **Deux environnements sont fournis** — sélectionner celui qui correspond à la façon dont l'API tourne, sinon les requêtes n'aboutissent pas :\n  - « Dev local » → API sur le host, port **5099**, lancée par `dotnet run --project src/NutritionApi.Api`\n  - « Docker » → API conteneurisée, port **5100**, lancée par `./scripts/docker-up.sh`\n- **Les dossiers Users et Admin renvoient 500** tant que NTR-54 et NTR-55 ne sont pas livrés : leurs controllers dépendent de services Infrastructure non encore implémentés, ce qui les rend entièrement inconstructibles — y compris pour les endpoints sans rapport avec ces services. Voir la description de chaque dossier.\n- Les dossiers **Diet Plans**, **Diets**, **Meals** et **Nutrition** sont pleinement fonctionnels.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentification",
+      "description": "Obtention d'un jeton auprès de Keycloak. Le jeton est enregistré dans la variable de collection `accessToken` et appliqué automatiquement aux autres requêtes.",
+      "item": [
+        {
+          "name": "Jeton — test-user (Free)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Jeton obtenu\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"access_token\");",
+                  "    pm.collectionVariables.set(\"accessToken\", json.access_token);",
+                  "    pm.collectionVariables.set(\"accessTokenUser\", json.access_token);",
+                  "    console.log(\"Jeton enregistré pour test-user\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "test-user",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "{{realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Utilisateur standard, abonnement Free. Ne peut pas accéder aux templates partagés (403)."
+          }
+        },
+        {
+          "name": "Jeton — test-pro (Pro)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Jeton obtenu\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"access_token\");",
+                  "    pm.collectionVariables.set(\"accessToken\", json.access_token);",
+                  "    pm.collectionVariables.set(\"accessTokenPro\", json.access_token);",
+                  "    console.log(\"Jeton enregistré pour test-pro\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "test-pro",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "{{realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Abonnement Pro. Accède aux templates partagés (200)."
+          }
+        },
+        {
+          "name": "Jeton — test-admin (rôle admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Jeton obtenu\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json).to.have.property(\"access_token\");",
+                  "    pm.collectionVariables.set(\"accessToken\", json.access_token);",
+                  "    pm.collectionVariables.set(\"accessTokenAdmin\", json.access_token);",
+                  "    console.log(\"Jeton enregistré pour test-admin\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{clientId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "test-admin",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloakUrl}}"
+              ],
+              "path": [
+                "realms",
+                "{{realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Rôle admin : seul compte autorisé sur /api/v1/admin/**."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "Profil utilisateur, pesées et aliments favoris.\n\n## ⚠️ Tout ce dossier renvoie 500 actuellement\n\n`UsersController` injecte `IFoodItemService`, qui n'est pas enregistré dans le conteneur d'injection de dépendances tant que `IFoodCacheService` n'existe pas (**NTR-54**).\n\nConséquence : **le controller entier est inconstructible**. Les 9 requêtes échouent, y compris celles sans rapport avec les aliments (profil, pesées).\n\nMême mécanisme pour le dossier **Admin** (`IJobMonitoringService`, NTR-55).\n\nLes dossiers **Diet Plans**, **Diets**, **Meals** et **Nutrition** fonctionnent normalement.",
+      "item": [
+        {
+          "name": "Créer le profil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"birthDate\": \"1992-03-15\",\n  \"gender\": 1,\n  \"activityLevel\": 3,\n  \"height\": 180,\n  \"allergies\": [],\n  \"dietaryPreferences\": [],\n  \"weight\": 78.5\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "⚠️ Renvoie 500 tant que NTR-54 n'est pas livré — voir la description du dossier Users.\n\nCrée le profil à la première connexion, avec la première pesée.\n\n**Enums numériques** — gender : 1 Male, 2 Female, 3 Other. activityLevel : 1 Sedentary, 2 LightlyActive, 3 ModeratelyActive, 4 VeryActive, 5 ExtremelyActive.\n\nRenvoie 409 si le profil existe déjà — c'est le cas des comptes de `seed-dev.sql`."
+          }
+        },
+        {
+          "name": "Lire le profil",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "⚠️ Renvoie 500 tant que NTR-54 n'est pas livré — voir la description du dossier Users.\n\nProfil de l'utilisateur connecté."
+          }
+        },
+        {
+          "name": "Mettre à jour le profil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"birthDate\": \"1992-03-15\",\n  \"gender\": 1,\n  \"activityLevel\": 4,\n  \"height\": 180,\n  \"allergies\": [1],\n  \"dietaryPreferences\": [1]\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me"
+              ]
+            },
+            "description": "⚠️ Renvoie 500 tant que NTR-54 n'est pas livré — voir la description du dossier Users.\n\n**allergies** — valeurs numériques : 1 Gluten, 2 Crustaceans, 3 Eggs, 4 Fish, 5 Peanuts, 6 Soybeans, 7 Milk, 8 Nuts, 9 Celery, 10 Mustard, 11 SesameSeeds, 12 SulphurDioxide, 13 Lupin, 14 Molluscs."
+          }
+        },
+        {
+          "name": "Ajouter une pesée",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight\": 79.2,\n  \"measuredAt\": null\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me/weight-entries",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weight-entries"
+              ]
+            },
+            "description": "⚠️ Renvoie 500 tant que NTR-54 n'est pas livré — voir la description du dossier Users.\n\n`measuredAt` à null enregistre la pesée à la date du jour. Une seule pesée par date (409 sinon)."
+          }
+        },
+        {
+          "name": "Historique des pesées",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me/weight-entries",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weight-entries"
+              ]
+            },
+            "description": "⚠️ Renvoie 500 tant que NTR-54 n'est pas livré — voir la description du dossier Users."
+          }
+        },
+        {
+          "name": "Modifier une pesée",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"weight\": 78.9,\n  \"measuredAt\": \"2026-07-21\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me/weight-entries/{{weightEntryId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "weight-entries",
+                "{{weightEntryId}}"
+              ]
+            },
+            "description": "⚠️ Renvoie 500 tant que NTR-54 n'est pas livré — voir la description du dossier Users."
+          }
+        },
+        {
+          "name": "Liste des favoris",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me/saved-food-items",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "saved-food-items"
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-54 n'est pas livré (IFoodItemService non enregistré)."
+          }
+        },
+        {
+          "name": "Ajouter un favori",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"foodItemId\": \"{{foodItemId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me/saved-food-items",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "saved-food-items"
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-54 n'est pas livré."
+          }
+        },
+        {
+          "name": "Retirer un favori",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/users/me/saved-food-items/{{savedFoodItemId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "me",
+                "saved-food-items",
+                "{{savedFoodItemId}}"
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-54 n'est pas livré."
+          }
+        }
+      ]
+    },
+    {
+      "name": "RGPD",
+      "description": "Suppression, réactivation et export des données personnelles.",
+      "item": [
+        {
+          "name": "Demander la suppression du compte",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/rgpd",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rgpd"
+              ]
+            },
+            "description": "RGPD Art. 17 — marque le compte pour suppression, avec une grace period de 30 jours.\n\n⚠️ Rend le compte de test inutilisable jusqu'à réactivation."
+          }
+        },
+        {
+          "name": "Réactiver le compte",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/rgpd/reactivate",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rgpd",
+                "reactivate"
+              ]
+            },
+            "description": "Annule la demande de suppression si la grace period n'est pas écoulée."
+          }
+        },
+        {
+          "name": "Exporter ses données",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/rgpd/export",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "rgpd",
+                "export"
+              ]
+            },
+            "description": "RGPD Art. 20 — retourne une archive ZIP."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Diet Plans",
+      "description": "Plans diététiques personnels et templates partagés.",
+      "item": [
+        {
+          "name": "Lister ses plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diet-plans",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diet-plans"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Créer un plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.environment.set(\"dietPlanId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Plan créé depuis Postman\",\n  \"dietType\": 1,\n  \"goal\": 1,\n  \"targetWeight\": 75,\n  \"macroDistribution\": {\n    \"proteinPct\": 30,\n    \"carbPct\": 40,\n    \"fatPct\": 30\n  }\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diet-plans",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diet-plans"
+              ]
+            },
+            "description": "**dietType** : 1 Balanced, 2 HighProtein, 3 Keto, 4 Mediterranean, 5 LowCarb, 6 Vegetarian, 7 Vegan, 8 Custom.\n**goal** : 1 WeightLoss, 2 Maintenance, 3 WeightGain.\n\nLa somme des macros doit faire 100. Quota par tier : Free 2, Pro 20, Business illimité (403 au-delà).\n\nL'identifiant du plan créé est enregistré dans la variable `dietPlanId`."
+          }
+        },
+        {
+          "name": "Modifier un plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Plan modifié\",\n  \"dietType\": 5,\n  \"goal\": 1,\n  \"targetWeight\": 73,\n  \"macroDistribution\": {\n    \"proteinPct\": 40,\n    \"carbPct\": 30,\n    \"fatPct\": 30\n  }\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diet-plans/{{dietPlanId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diet-plans",
+                "{{dietPlanId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Supprimer un plan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diet-plans/{{dietPlanId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diet-plans",
+                "{{dietPlanId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Lister les templates partagés",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diet-plans/templates",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diet-plans",
+                "templates"
+              ]
+            },
+            "description": "Réservé aux abonnements Pro et Business.\n\n**À tester avec les deux comptes** : 403 avec le jeton test-user (Free), 200 avec test-pro."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Diets",
+      "description": "Cycle de vie d'un régime : lancement, consultation, archivage.",
+      "item": [
+        {
+          "name": "Lancer un plan",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.environment.set(\"dietId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diets/{{dietPlanId}}/launch",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diets",
+                "{{dietPlanId}}",
+                "launch"
+              ]
+            },
+            "description": "Crée une Diet active à partir du plan.\n\n409 si une Diet est déjà active, 422 si aucune pesée n'existe.\n\nL'identifiant de la Diet créée est enregistré dans `dietId`."
+          }
+        },
+        {
+          "name": "Régime actif",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diets/active",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diets",
+                "active"
+              ]
+            },
+            "description": "404 si aucun régime actif."
+          }
+        },
+        {
+          "name": "Historique des régimes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diets",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diets"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Détail d'un régime",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diets/{{dietId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diets",
+                "{{dietId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Archiver un régime",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/diets/{{dietId}}/archive",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "diets",
+                "{{dietId}}",
+                "archive"
+              ]
+            },
+            "description": "422 si le régime n'est pas au statut Active."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Nutrition",
+      "description": "Bilan nutritionnel d'un régime.",
+      "item": [
+        {
+          "name": "Bilan d'un régime",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/nutrition/{{dietId}}/bilan?period=1",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "nutrition",
+                "{{dietId}}",
+                "bilan"
+              ],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "1",
+                  "description": "Période d'agrégation (enum numérique)"
+                },
+                {
+                  "key": "date",
+                  "value": null,
+                  "disabled": true
+                },
+                {
+                  "key": "startDate",
+                  "value": null,
+                  "disabled": true
+                },
+                {
+                  "key": "endDate",
+                  "value": null,
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Agrège les apports par rapport aux objectifs du régime sur la période demandée."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Meals",
+      "description": "Repas et aliments qui les composent.",
+      "item": [
+        {
+          "name": "Créer un repas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.environment.set(\"mealId\", pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Déjeuner depuis Postman\",\n  \"mealType\": 2,\n  \"consumedAt\": \"2026-07-21T12:30:00Z\",\n  \"notes\": null,\n  \"isSaved\": false,\n  \"items\": [\n    {\n      \"foodItemId\": \"{{foodItemId}}\",\n      \"quantity\": 150\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ]
+            },
+            "description": "**mealType** : 1 Breakfast, 2 Lunch, 3 Dinner, 4 Snack.\n`quantity` en grammes. Le repas doit contenir au moins un item.\n\nL'identifiant du repas créé est enregistré dans `mealId`."
+          }
+        },
+        {
+          "name": "Lister ses repas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals"
+              ],
+              "query": [
+                {
+                  "key": "saved",
+                  "value": "true",
+                  "disabled": true
+                },
+                {
+                  "key": "date",
+                  "value": "2026-07-21",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Filtres optionnels : `saved` (repas sauvegardés) et `date` (date de consommation)."
+          }
+        },
+        {
+          "name": "Détail d'un repas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals/{{mealId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{mealId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Modifier un repas",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Repas renommé\",\n  \"mealType\": null,\n  \"notes\": \"Note ajoutée depuis Postman\",\n  \"consumedAt\": null,\n  \"isSaved\": null\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals/{{mealId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{mealId}}"
+              ]
+            },
+            "description": "Modification partielle : les champs à `null` restent inchangés."
+          }
+        },
+        {
+          "name": "Supprimer un repas",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals/{{mealId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{mealId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ajouter un aliment au repas",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"foodItemId\": \"{{foodItemId}}\",\n  \"quantity\": 80\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals/{{mealId}}/items",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{mealId}}",
+                "items"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retirer un aliment du repas",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/meals/{{mealId}}/items/{{mealItemId}}",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "meals",
+                "{{mealId}}",
+                "items",
+                "{{mealItemId}}"
+              ]
+            },
+            "description": "Renseigner `mealItemId` depuis la réponse du détail du repas."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Food Items",
+      "description": "Recherche dans le catalogue d'aliments.",
+      "item": [
+        {
+          "name": "Rechercher un aliment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/food-items?search=poulet&limit=20",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "food-items"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "poulet"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-54 n'est pas livré (IFoodCacheService absent, IFoodItemService non enregistré)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "description": "Back-office. Nécessite le jeton de test-admin — 403 avec tout autre compte.\n\n## ⚠️ Tout ce dossier renvoie 500 avec un jeton admin\n\n`AdminController` injecte `IAdminService`, non enregistré tant que `IJobMonitoringService` n'existe pas (**NTR-55**).\n\nLe contrôle de rôle fonctionne en revanche dès maintenant : un jeton non-admin reçoit bien un **403**, car l'autorisation est évaluée avant la construction du controller.",
+      "item": [
+        {
+          "name": "Dashboard — KPIs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/admin/dashboard",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "dashboard"
+              ]
+            },
+            "description": "⚠️ 500 avec un jeton admin tant que NTR-55 n'est pas livré (IJobMonitoringService absent).\n\nAvec un jeton non-admin : 403 — ce contrôle fonctionne dès maintenant."
+          }
+        },
+        {
+          "name": "État de santé du système",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/admin/system/health",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "system",
+                "health"
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-55 n'est pas livré."
+          }
+        },
+        {
+          "name": "Créer un template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Template créé depuis Postman\",\n  \"dietType\": 1,\n  \"goal\": 2,\n  \"targetWeight\": 0,\n  \"macroDistribution\": {\n    \"proteinPct\": 25,\n    \"carbPct\": 45,\n    \"fatPct\": 30\n  }\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/admin/diet-plans/templates",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "diet-plans",
+                "templates"
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-55 n'est pas livré."
+          }
+        },
+        {
+          "name": "Modifier un template",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Template modifié\",\n  \"dietType\": 4,\n  \"goal\": 2,\n  \"targetWeight\": 0,\n  \"macroDistribution\": {\n    \"proteinPct\": 20,\n    \"carbPct\": 50,\n    \"fatPct\": 30\n  }\n}"
+            },
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/admin/diet-plans/templates/11111111-1111-1111-1111-111111111104",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "diet-plans",
+                "templates",
+                "11111111-1111-1111-1111-111111111104"
+              ]
+            },
+            "description": "Identifiant du template « Équilibre méditerranéen », créé par la migration SeedTemplates.\n\n⚠️ 500 tant que NTR-55 n'est pas livré."
+          }
+        },
+        {
+          "name": "Supprimer un template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/v1/admin/diet-plans/templates/11111111-1111-1111-1111-111111111104",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "diet-plans",
+                "templates",
+                "11111111-1111-1111-1111-111111111104"
+              ]
+            },
+            "description": "⚠️ 500 tant que NTR-55 n'est pas livré."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plateforme",
+      "description": "Surfaces hors API REST : dashboard Hangfire et spec OpenAPI.\n\nCes requêtes ne servent pas à consulter ces pages — le dashboard est une UI web, sa réponse est du HTML inexploitable ici. Elles vérifient le **contrôle d'accès** et la **génération de la spec**, deux choses qu'aucun autre test ne couvre.\n\nPour consulter le dashboard, ouvrir http://localhost:5099/hangfire dans un navigateur.",
+      "item": [
+        {
+          "name": "Dashboard Hangfire — admin (200)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessTokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/hangfire",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "hangfire"
+              ]
+            },
+            "description": "Prérequis : jouer « Jeton — test-admin » au moins une fois.\n\nRéponse : du HTML, normal — /hangfire n'est servi par aucun controller mais par un middleware du package Hangfire.AspNetCore, monté dans Program.cs par MapHangfireDashboard. Seul le statut compte ici."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"L'admin accède au dashboard\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard Hangfire — non-admin (403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessTokenUser}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/hangfire",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "hangfire"
+              ]
+            },
+            "description": "Prérequis : jouer « Jeton — test-user » au moins une fois.\n\nVérifie HangfireAdminAuthorizationFilter : un utilisateur authentifié sans le rôle admin doit être refusé. C'est le seul test automatisé de ce filtre — voir l'état de confiance de systemes/plateforme/pipeline-http.md."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Un non-admin est refusé\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Spec OpenAPI",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/swagger/v1/swagger.json",
+              "host": [
+                "{{apiUrl}}"
+              ],
+              "path": [
+                "swagger",
+                "v1",
+                "swagger.json"
+              ]
+            },
+            "description": "Spec générée par Swashbuckle. Sans authentification, et indisponible en production (UseSwagger n'est monté que hors Production).\n\nC'est le fichier à importer dans Postman ou à donner à NSwag/Kiota pour valider l'exploitabilité du contrat (NTR-121)."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"La spec est générée\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.property(\"paths\");",
+                  "});",
+                  "",
+                  "pm.test(\"Le dashboard Hangfire n'est pas dans la spec\", function () {",
+                  "    const paths = Object.keys(pm.response.json().paths);",
+                  "    pm.expect(paths.filter(p => p.startsWith(\"/hangfire\"))).to.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

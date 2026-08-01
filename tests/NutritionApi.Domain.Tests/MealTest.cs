@@ -4,6 +4,7 @@ using NutritionApi.Domain.ValueObjects;
 
 namespace NutritionApi.Domain.Tests;
 
+[Trait("Level", "1")]
 public class MealTest
 {
     static NutritionInfo DefaultNutrition() => new(200.0f, 20, 15, 8);
@@ -55,6 +56,17 @@ public class MealTest
         Assert.Equal(consumedAt, meal.ConsumedAt);
         Assert.Single(meal.MealItems);
         Assert.False(meal.IsSaved);
+    }
+
+    [Fact]
+    public void Constructor_CreatedAt_IsSetToUtcNowTest()
+    {
+        var before = DateTime.UtcNow;
+
+        var meal = CreateMeal();
+
+        var after = DateTime.UtcNow;
+        Assert.InRange(meal.CreatedAt, before, after);
     }
 
     [Fact]

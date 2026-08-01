@@ -1,0 +1,173 @@
+{
+  "realm": "nutrition",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 1800,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Utilisateur standard de l'application"
+      },
+      {
+        "name": "admin",
+        "description": "Administrateur — accès au back-office /api/v1/admin/**"
+      }
+    ]
+  },
+
+  "clients": [
+    {
+      "clientId": "nutrition-api",
+      "name": "Nutrition API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocolMappers": [
+        {
+          "name": "audience-nutrition-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "nutrition-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+
+    {
+      "clientId": "nutrition-api-service",
+      "name": "Nutrition API — compte de service",
+      "description": "Client confidentiel utilisé par l'API pour agir sur le realm : suppression des comptes par la purge RGPD. Distinct de nutrition-api, qui est public et ne peut donc pas s'authentifier par client_credentials.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-service-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [],
+      "webOrigins": []
+    },
+
+    {
+      "clientId": "nutrition-api-tests-shortlived",
+      "name": "Tests — jetons à durée de vie très courte",
+      "description": "Réservé aux tests de niveau 3 (IT-EXT-18). Émet des jetons valides une seconde, ce que le realm ne permet pas : accessTokenLifespan y vaut 1800 s. Le mapper d'audience est conservé, sinon le rejet viendrait de l'audience et non de l'expiration.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "attributes": {
+        "access.token.lifespan": "1"
+      },
+      "redirectUris": [],
+      "webOrigins": [],
+      "protocolMappers": [
+        {
+          "name": "audience-nutrition-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "nutrition-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+
+    {
+      "clientId": "nutrition-api-tests-no-audience",
+      "name": "Tests — jetons sans l'audience attendue",
+      "description": "Réservé aux tests de niveau 3 (IT-EXT-19). Aucun mapper d'audience : les jetons émis ne portent pas nutrition-api dans leur claim aud, et l'API doit les refuser. Sans ce contrôle, un jeton obtenu pour une autre API serait accepté.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [],
+      "webOrigins": []
+    }
+  ],
+
+  "users": [
+    {
+      "id": "11111111-0000-0000-0000-000000000001",
+      "username": "test-user",
+      "email": "test-user@nutrition.local",
+      "firstName": "Test",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000002",
+      "username": "test-pro",
+      "email": "test-pro@nutrition.local",
+      "firstName": "Test",
+      "lastName": "Pro",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "id": "11111111-0000-0000-0000-000000000003",
+      "username": "test-admin",
+      "email": "test-admin@nutrition.local",
+      "firstName": "Test",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user", "admin"]
+    },
+
+    {
+      "username": "service-account-nutrition-api-service",
+      "enabled": true,
+      "serviceAccountClientId": "nutrition-api-service",
+      "clientRoles": {
+        "realm-management": ["view-users", "manage-users"]
+      }
+    }
+  ]
+}
