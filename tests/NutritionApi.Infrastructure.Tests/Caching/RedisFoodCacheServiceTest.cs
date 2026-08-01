@@ -210,17 +210,39 @@ public class RedisFoodCacheServiceTest
     }
 
     [Fact]
-    public async Task InvalidateAllSearchesAsync_WhenRedisUnavailable_LetsTheExceptionSurface()
+    public async Task InvalidateAllSearchesAsync_ShouldLogAndContinue_WhenRedisIsUnavailable()
     {
-        // L'invalidation post-import n'est volontairement pas protégée : si elle échouait en
-        // silence, un catalogue mis à jour serait masqué par un cache périmé jusqu'à 24 h.
+        // Une panne du cache ne doit pas faire échouer l'import qui vient de le nettoyer : les
+        // aliments sont déjà en base, seul le nettoyage manque. Laisser l'exception remonter
+        // provoquait un retéléchargement du dump et le retraitement de plusieurs millions de
+        // lignes. Le prix accepté est un cache périmé jusqu'à l'expiration de ses entrées.
         GivenSearchKeysOnServer(["food:search:v1:poulet"]);
         _db.Setup(d => d.KeyDeleteAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
            .ThrowsAsync(RedisDown());
 
         var service = CreateService();
 
-        await Assert.ThrowsAsync<RedisConnectionException>(service.InvalidateAllSearchesAsync);
+        await service.InvalidateAllSearchesAsync();
+
+        VerifyWarningLogged(Times.Once());
+    }
+
+    [Fact]
+    public async Task InvalidateAllSearchesAsync_ShouldLogAndContinue_WhenScanTimesOut()
+    {
+        // RedisTimeoutException dérive de TimeoutException, pas de RedisException : un catch sur
+        // cette dernière seule laissait passer le cas réel. C'est précisément ce que produit un
+        // Redis arrêté quand le parcours des clés attend la réponse au SCAN — défaut trouvé par le
+        // cas de niveau 3, invisible ici tant que ce test n'existait pas.
+        GivenSearchKeysOnServer(["food:search:v1:poulet"]);
+        _db.Setup(d => d.KeyDeleteAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+           .ThrowsAsync(new RedisTimeoutException("Timeout performing SCAN", CommandStatus.WaitingToBeSent));
+
+        var service = CreateService();
+
+        await service.InvalidateAllSearchesAsync();
+
+        VerifyWarningLogged(Times.Once());
     }
 
     // ---------------------------------------------------------------------

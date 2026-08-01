@@ -110,22 +110,41 @@ public sealed class RedisFoodCacheService : IFoodCacheService
     /// sont supprimées elles aussi.
     /// </para>
     /// <para>
-    /// Contrairement à <see cref="GetAsync"/> et <see cref="SetAsync"/>, une panne Redis n'est pas
-    /// interceptée ici : l'import doit échouer visiblement plutôt que laisser servir un catalogue
-    /// périmé jusqu'au terme de la durée de vie des entrées.
+    /// Une panne Redis est interceptée, comme dans <see cref="GetAsync"/> et <see cref="SetAsync"/>.
+    /// La laisser remonter faisait échouer l'import entier pour un nettoyage de cache raté : le
+    /// planificateur retéléchargeait alors le dump et retraitait plusieurs millions de lignes, alors
+    /// que les aliments étaient déjà en base et que seul le nettoyage manquait. Disproportionné.
+    /// </para>
+    /// <para>
+    /// Ce que coûte l'interception : les recherches mémorisées portent sur l'ancien catalogue
+    /// jusqu'à l'expiration de leur durée de vie, ou jusqu'au prochain import qui réussira son
+    /// nettoyage. Une panne Redis relève de l'exploitation du système, pas de l'import.
     /// </para>
     /// </remarks>
-    /// <exception cref="RedisException">Redis est indisponible — l'invalidation n'a pas eu lieu.</exception>
     public async Task InvalidateAllSearchesAsync()
     {
-        var db = _redis.GetDatabase();
-
-        foreach (var endpoint in _redis.GetEndPoints())
+        try
         {
-            var server = _redis.GetServer(endpoint);
+            var db = _redis.GetDatabase();
 
-            foreach (var key in server.Keys(pattern: $"{KeyPrefix}*"))
-                await db.KeyDeleteAsync(key);
+            foreach (var endpoint in _redis.GetEndPoints())
+            {
+                var server = _redis.GetServer(endpoint);
+
+                foreach (var key in server.Keys(pattern: $"{KeyPrefix}*"))
+                    await db.KeyDeleteAsync(key);
+            }
+        }
+        // RedisTimeoutException dérive de TimeoutException, pas de RedisException : un catch sur
+        // cette dernière seule laisse passer le cas réel. Le parcours des clés attend la réponse au
+        // SCAN et expire, là où une lecture simple échoue d'abord sur l'absence de connexion.
+        catch (Exception ex) when (ex is RedisException or RedisTimeoutException)
+        {
+            _logger.LogWarning(
+                ex,
+                "Cache indisponible au nettoyage — les recherches mémorisées restent sur l'ancien "
+                + "catalogue jusqu'à l'expiration de leur durée de vie ({Heures} h).",
+                _ttl.TotalHours);
         }
     }
 }

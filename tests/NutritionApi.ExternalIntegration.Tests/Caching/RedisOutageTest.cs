@@ -1,7 +1,9 @@
 namespace NutritionApi.ExternalIntegration.Tests.Caching;
 
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using NutritionApi.Domain.Entity;
+using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.ExternalIntegration.Tests.Fixtures;
 
 /// <summary>
@@ -51,6 +53,63 @@ public sealed class RedisOutageTest(IntegrationFactory factory)
             await DockerContainer.WaitHealthyAsync(DockerContainer.Redis, TimeSpan.FromSeconds(60));
         }
     }
+
+    /// <summary>
+    /// Redis arrêté en fin d'import : l'import se termine quand même.
+    /// </summary>
+    /// <remarks>
+    /// L'import écrit les aliments en base, puis nettoie les recherches mémorisées. Ce nettoyage a
+    /// longtemps laissé remonter une panne du cache, ce qui faisait échouer l'import entier — le
+    /// planificateur retéléchargeait alors le dump et retraitait plusieurs millions de lignes, pour
+    /// un geste de nettoyage. Les aliments étaient pourtant déjà en base.
+    /// <para>
+    /// Le prix assumé : les recherches mémorisées portent sur l'ancien catalogue jusqu'à
+    /// l'expiration de leurs entrées, ou jusqu'au prochain import qui réussira son nettoyage. Une
+    /// panne du cache relève de l'exploitation du système, pas de l'import.
+    /// </para>
+    /// <para>
+    /// Ce cas ne peut vivre qu'au niveau 3 : un test unitaire ne prouverait que l'interception d'une
+    /// exception qu'il fait lui-même lever, pas que Redis réellement arrêté produit bien celle-là.
+    /// </para>
+    /// </remarks>
+    [Fact]
+    public async Task OffImportJob_ShouldComplete_WhenCacheIsDownAtInvalidation()
+    {
+        factory.DumpLines.Clear();
+        factory.DumpLines.Add(DumpLine($"it-ext-24-{Guid.NewGuid()}", "Produit importé cache éteint"));
+
+        DockerContainer.Stop(DockerContainer.Redis);
+
+        try
+        {
+            var (scope, job) = factory.Resolve<IOffImportJob>();
+
+            using (scope)
+            {
+                // L'absence d'exception est l'assertion : le planificateur ne voit aucun échec,
+                // donc ne relance pas l'import.
+                await job.RunAsync();
+            }
+
+            await using var context = factory.NewContext();
+
+            Assert.Contains(
+                await context.FoodItems.ToListAsync(),
+                aliment => aliment.Name == "Produit importé cache éteint");
+        }
+        finally
+        {
+            DockerContainer.Start(DockerContainer.Redis);
+            await DockerContainer.WaitHealthyAsync(DockerContainer.Redis, TimeSpan.FromSeconds(60));
+        }
+    }
+
+    /// <summary>Construit une ligne JSONL au format du dump Open Food Facts.</summary>
+    /// <param name="offId">Code-barres — unique, la colonne porte un index unique.</param>
+    /// <param name="name">Nom du produit.</param>
+    private static string DumpLine(string offId, string name) => $$$"""
+        {"code":"{{{offId}}}","product_name":"{{{name}}}","allergens_tags":[],"nutriments":{"energy-kcal_100g":120,"proteins_100g":8,"carbohydrates_100g":15,"fat_100g":3}}
+        """;
 
     /// <summary>Insère un aliment dont le nom contient le mot-clé recherché.</summary>
     private async Task SeedFoodItemAsync(string keyword)
