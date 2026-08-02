@@ -95,7 +95,7 @@ jobs:
           retention-days: 1
 
   coverage:
-    name: Couverture fusionnée et seuils
+    name: Couverture fusionnée, seuils et analyse SonarQube
     if: github.head_ref != 'main'
     needs: [unit-tests, integration-tests]
     runs-on: ubuntu-latest
@@ -103,9 +103,20 @@ jobs:
       pull-requests: write
       checks: write
 
+    # Déclaré au niveau du job pour être lisible dans les conditions `if` des étapes : GitHub
+    # ne transmet aucun secret aux pull requests issues d'un fork. Sans ce garde, l'analyse y
+    # échouerait et ferait échouer toute la CI d'une contribution extérieure — alors que le
+    # reste des vérifications, lui, aurait parfaitement tourné.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
     steps:
-      # Le dépôt est nécessaire : le contrôle lit les seuils dans tests/coverage.runsettings.
+      # fetch-depth: 0 — SonarQube s'appuie sur l'historique pour dater les lignes et distinguer
+      # le code neuf du code ancien. Avec un clone superficiel, tout le dépôt lui paraît nouveau
+      # et la notion de « nouveau code » du quality gate perd son sens.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Récupérer les couvertures brutes
         uses: actions/download-artifact@v4
@@ -139,3 +150,43 @@ jobs:
       # dans tests/coverage.runsettings : une seule source, celle que documente le README.
       - name: Contrôle des seuils par couche
         run: ./scripts/check-coverage.sh coverage/report/Cobertura.xml
+
+      # ── Analyse SonarQube Cloud (NTR-169) ────────────────────────────────────────
+      # Elle vit dans ce job parce que c'est le seul qui dispose des deux couvertures. Les
+      # rapports bruts des deux suites y ont déjà été téléchargés.
+      #
+      # Le scanner .NET n'est pas un simple lecteur de fichiers : il s'insère dans MSBuild entre
+      # `begin` et `end` pour analyser le code compilé. D'où un build ici — mais pas de tests,
+      # qui ont déjà tourné dans les deux jobs précédents et dont on récupère les rapports.
+      - name: Setup Java
+        if: env.SONAR_TOKEN != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup .NET
+        if: env.SONAR_TOKEN != ''
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Analyse SonarQube Cloud
+        if: env.SONAR_TOKEN != ''
+        env:
+          # Permet au scanner d'annoter la pull request avec ses observations.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          dotnet sonarscanner begin \
+            /k:"MGNetworking_nutrition-api" \
+            /o:"mgnetworking" \
+            /d:sonar.token="${SONAR_TOKEN}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.cs.opencover.reportsPaths="coverage/**/coverage.opencover.xml"
+          dotnet build nutrition-api.slnx --configuration Release
+          dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
+
+      - name: Analyse ignorée — aucun jeton
+        if: env.SONAR_TOKEN == ''
+        run: echo "SONAR_TOKEN absent (pull request issue d'un fork) — analyse SonarQube ignorée."

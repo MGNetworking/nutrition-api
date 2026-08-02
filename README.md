@@ -2,14 +2,18 @@
 
 [![CI — Pull request](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml)
 [![CI — Release](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml)
-[![Coverage](https://img.shields.io/badge/coverage-à_configurer-lightgrey)](#tests-automatisés)
-[![Quality Gate](https://img.shields.io/badge/SonarCloud-à_configurer-lightgrey)](https://sonarcloud.io)
-[![Dependabot](https://img.shields.io/badge/Dependabot-à_configurer-lightgrey)](https://github.com/MGNetworking/nutrition-api/network/updates)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MGNetworking_nutrition-api&metric=coverage)](https://sonarcloud.io/summary/new_code?id=MGNetworking_nutrition-api)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=MGNetworking_nutrition-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=MGNetworking_nutrition-api)
 [![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://mgnetworking.github.io/docs-nutrition/)
 [![Release](https://img.shields.io/github/v/release/MGNetworking/nutrition-api)](https://github.com/MGNetworking/nutrition-api/releases)
 [![Licence](https://img.shields.io/badge/licence-FSL--1.1--ALv2-blue)](LICENSE)
 
-> Les badges Coverage, SonarCloud et Dependabot restent à brancher — voir NTR-120.
+> **Pas de badge Dependabot, et c'est délibéré.** Dependabot est actif — voir
+> [`.github/dependabot.yml`](.github/dependabot.yml) et les
+> [mises à jour proposées](https://github.com/MGNetworking/nutrition-api/network/updates). Mais il
+> n'existe plus de badge d'état : GitHub a supprimé le service qui le servait en absorbant
+> Dependabot, sans le remplacer. Un badge statique afficherait « enabled » même le jour où la
+> configuration serait supprimée — une décoration, pas une mesure.
 
 API SaaS de gestion nutritionnelle — backend ASP.NET Core 10, architecture DDD en quatre couches.
 
