@@ -1,0 +1,65 @@
+version: 2
+
+# Deux écosystèmes, et pas un seul : les dépendances NuGet du projet, et les actions employées
+# par les workflows. Le second n'est pas accessoire — c'est lui qui prend le relais de
+# l'épinglage fait en NTR-167. Une action figée sur une version ne se met plus à jour toute
+# seule ; sans Dependabot, elle se périme en silence.
+#
+# Aucun label n'est déclaré : Dependabot applique alors « dependencies », qu'il crée lui-même.
+# Un label nommé ici devrait exister au préalable dans le dépôt, sans quoi l'étiquetage échoue
+# sans rien interrompre — donc sans se voir.
+
+updates:
+  - package-ecosystem: nuget
+    directory: "/"
+
+    # Sans cette clé, Dependabot vise la branche par défaut du dépôt — ici main. Ses pull
+    # requests contourneraient dev, et donc ci-pr.yml : elles arriveraient sur la branche des
+    # releases sans avoir été éprouvées par les tests de niveau 3 ni par le contrôle des seuils
+    # de couverture. C'est la ligne la plus importante de ce fichier.
+    target-branch: dev
+
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+
+    # Les montées mineures et correctives arrivent groupées en une seule pull request. Sans
+    # groupe, une semaine calme produit déjà cinq ou six PR, chacune montant la pile
+    # docker-compose et jouant les tests de niveau 3 — plusieurs minutes de CI par montée
+    # triviale. Les majeures restent séparées : elles se relisent une par une.
+    groups:
+      nuget-mineures:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+    open-pull-requests-limit: 5
+
+    # chore est masqué du CHANGELOG par release-please-config.json. C'est voulu pour les montées
+    # de routine ; une mise à jour de sécurité qui mérite d'être annoncée se reprend à la main
+    # dans un commit fix.
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    target-branch: dev
+
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+
+    groups:
+      actions-mineures:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+    open-pull-requests-limit: 5
+
+    commit-message:
+      prefix: chore
+      include: scope
