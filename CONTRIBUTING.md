@@ -37,6 +37,7 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 | PR | Workflow | Ce qui s'exécute |
 |----|----------|-----------------|
 | `feature/* → dev` | `ci-pr.yml` | Trois jobs : niveaux 1 et 2, niveau 3 sur docker-compose, puis couverture fusionnée et contrôle des seuils |
+| push sur `dev` | `ci-pr.yml` | Les mêmes trois jobs, sans le commentaire de couverture — il n'y a plus de PR à commenter |
 | `main → dev` (sync) | `ci-pr.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → prod` | `ci-deploy.yml` | Build Release + déploiement VPS |
 | `main → prod` (sync) | `ci-deploy.yml` | **ignoré** (`github.head_ref != 'main'`) |
@@ -50,6 +51,11 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 > joué deux fois ni oublié — donc que la fusion de leurs deux rapports ne double compte rien. Le
 > second appelle `./scripts/test-integration.sh`, le même script qu'en local : la CI ne déclare
 > aucun service qui lui soit propre.
+>
+> **Le push sur `dev` déclenche le même workflow**, et c'est lui qui alimente les badges. Une analyse
+> de pull request est attachée à la pull request : elle disparaît avec elle. Les badges lisent la
+> branche principale déclarée dans SonarQube — nommée `dev`, indépendamment de la branche par défaut
+> du dépôt, qui reste `main`. Sans analyse de branche, ils affichent « Measure has not been found ».
 >
 > Le job `coverage` attend les deux, fusionne les rapports et exécute `./scripts/check-coverage.sh`.
 > C'est ce contrôle qui fait échouer la PR sur la couverture ; les seuils sont déclarés dans
