@@ -3,16 +3,28 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using NutritionApi.Api.Extensions;
+using NutritionApi.Api.HealthChecks;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Api.Startup;
 using NutritionApi.Application;
 using NutritionApi.Infrastructure;
+using NutritionApi.Infrastructure.Persistence;
 using NutritionApi.Infrastructure.Scheduling;
 using System.Reflection;
 
 // Politique CORS appliquée aux appels du front — définie plus bas à partir de la configuration.
 const string FrontCorsPolicy = "front";
+
+// Points de terminaison de santé. Le préfixe sert aussi à les exclure de la redirection HTTPS.
+const string HealthPath = "/health";
+const string ReadyPath = "/health/ready";
+
+// Marque les sondes que /health/ready exécute. Une sonde sans ce marqueur existe toujours, mais
+// n'entre dans aucun verdict — c'est le tri entre vivacité et aptitude.
+const string ReadyTag = "ready";
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,10 +89,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddHostedService<KeycloakAdminConfigurationValidator>();
 
 // ── Disponibilité du serveur d'identité au démarrage ───────────────────────────
-// La validation des jetons est locale, à partir des clés du realm mises en cache. Une instance
-// démarrée sans avoir pu les récupérer accepterait le trafic et refuserait tous les jetons.
-// Ce service force la récupération et interrompt le démarrage si elle n'aboutit pas.
+// Précharge les clés du realm pour que la première requête authentifiée n'attende pas. Un échec
+// n'interrompt plus le démarrage depuis le 2026-08-02 (NTR-173) : c'est la sonde d'aptitude qui
+// tient l'instance hors du service tant qu'elle n'a pas de clés.
 builder.Services.AddHostedService<KeycloakAvailabilityService>();
+
+// ── Sondes de santé ────────────────────────────────────────────────────────────
+// Deux questions distinctes, deux points de terminaison (NTR-88) :
+//   /health       suis-je vivant ?          — ne consulte rien
+//   /health/ready suis-je en état de servir ? — consulte les dépendances marquées ReadyTag
+//
+// /health ne doit consulter aucune dépendance : c'est ce qui permet à un pod d'attendre ses clés
+// sans être tué par la sonde de vivacité, et donc de rester en attente au lieu d'entrer dans une
+// boucle de redémarrage.
+builder.Services.AddHealthChecks()
+    // Bloquante : sans base, l'application ne sait rien répondre.
+    .AddDbContextCheck<AppDbContext>("postgresql", tags: [ReadyTag])
+    // Bloquante, mais sur « ai-je des clés ? » et non « Keycloak répond-il ? » — voir la sonde.
+    .AddCheck<SigningKeysHealthCheck>(SigningKeysHealthCheck.Name, tags: [ReadyTag])
+    // Non bloquante : renvoie Degraded, publié dans la réponse, sans faire échouer l'aptitude.
+    .AddCheck<RedisHealthCheck>(RedisHealthCheck.Name, HealthStatus.Degraded, tags: [ReadyTag]);
 
 // ── Autorisation ───────────────────────────────────────────────────────────────
 // AdminOnly : réservé aux endpoints /api/v1/admin — rôle "admin" requis dans Keycloak
@@ -141,7 +169,13 @@ if (!app.Environment.IsProduction())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Nutrition API v1"));
 }
 
-app.UseHttpsRedirection();
+// Les sondes de santé sont interrogées en clair par le kubelet, sur le port du conteneur. Une
+// redirection 307 vers HTTPS serait comptée comme un échec par l'orchestrateur — et un pod sain
+// serait redémarré. D'où l'exclusion ; tout le reste du trafic redirige normalement.
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments(HealthPath),
+    branche => branche.UseHttpsRedirection());
+
 app.UseCors(FrontCorsPolicy);                 // Restreint aux origines front configurées
 
 app.UseMiddleware<ExceptionMiddleware>();      // Intercepte toutes les exceptions non gérées
@@ -162,6 +196,28 @@ app.MapHangfireDashboard("/hangfire", new DashboardOptions
 }).WithMetadata(new AllowWithoutProfileAttribute());
 
 app.UseMiddleware<UserResolutionMiddleware>(); // Résout keycloakId → User.Id interne
+
+// ── Sondes de santé ────────────────────────────────────────────────────────────
+// Anonymes : le kubelet ne présente aucun jeton. UserResolutionMiddleware les laisse passer, il
+// n'agit que sur les requêtes déjà authentifiées.
+//
+// Suis-je vivant ? Aucune sonde n'est exécutée : la seule chose vérifiée est que le processus
+// répond. Une base injoignable ne doit pas faire tuer le conteneur — c'est ce qui permet à une
+// instance d'attendre ses clés de signature au lieu d'entrer en boucle de redémarrage.
+app.MapHealthChecks(HealthPath, new HealthCheckOptions
+{
+    Predicate = _ => false,
+    ResponseWriter = HealthReportWriter.WriteAsync
+}).AllowAnonymous();
+
+// Suis-je en état de servir ? PostgreSQL et les clés de signature sont bloquants ; Redis est
+// publié dégradé sans faire échouer l'aptitude — un statut Degraded répond 200.
+app.MapHealthChecks(ReadyPath, new HealthCheckOptions
+{
+    Predicate = sonde => sonde.Tags.Contains(ReadyTag),
+    ResponseWriter = HealthReportWriter.WriteAsync
+}).AllowAnonymous();
+
 app.MapControllers();
 
 // Les jobs récurrents sont déclarés par RecurringJobRegistrationService (couche Infrastructure),

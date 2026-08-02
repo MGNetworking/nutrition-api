@@ -1,16 +1,19 @@
 # nutrition-api
 
-[![CI — Tests unitaires](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-unit.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-unit.yml)
+[![CI — Pull request](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml)
 [![CI — Release](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml)
-[![CI — Tests d'intégration externe](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-integration.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-integration.yml)
-[![Coverage](https://img.shields.io/badge/coverage-à_configurer-lightgrey)](#tests-automatisés)
-[![Quality Gate](https://img.shields.io/badge/SonarCloud-à_configurer-lightgrey)](https://sonarcloud.io)
-[![Dependabot](https://img.shields.io/badge/Dependabot-à_configurer-lightgrey)](https://github.com/MGNetworking/nutrition-api/network/updates)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MGNetworking_nutrition-api&metric=coverage)](https://sonarcloud.io/summary/new_code?id=MGNetworking_nutrition-api)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=MGNetworking_nutrition-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=MGNetworking_nutrition-api)
 [![Documentation](https://img.shields.io/badge/docs-GitHub_Pages-blue)](https://mgnetworking.github.io/docs-nutrition/)
 [![Release](https://img.shields.io/github/v/release/MGNetworking/nutrition-api)](https://github.com/MGNetworking/nutrition-api/releases)
 [![Licence](https://img.shields.io/badge/licence-FSL--1.1--ALv2-blue)](LICENSE)
 
-> Les badges Coverage, SonarCloud et Dependabot restent à brancher — voir NTR-120.
+> **Pas de badge Dependabot, et c'est délibéré.** Dependabot est actif — voir
+> [`.github/dependabot.yml`](.github/dependabot.yml) et les
+> [mises à jour proposées](https://github.com/MGNetworking/nutrition-api/network/updates). Mais il
+> n'existe plus de badge d'état : GitHub a supprimé le service qui le servait en absorbant
+> Dependabot, sans le remplacer. Un badge statique afficherait « enabled » même le jour où la
+> configuration serait supprimée — une décoration, pas une mesure.
 
 API SaaS de gestion nutritionnelle — backend ASP.NET Core 10, architecture DDD en quatre couches.
 
@@ -236,6 +239,44 @@ curl -X POST "http://localhost:8778/realms/nutrition/protocol/openid-connect/tok
   -d "username=test-user" -d "password=test"
 ```
 
+### Sondes de santé
+
+Deux points de terminaison anonymes, qui répondent à deux questions distinctes.
+
+| Chemin | Question | Consulte | Réponses |
+|---|---|---|---|
+| `/health` | suis-je vivant ? | **rien** | 200 tant que le processus répond |
+| `/health/ready` | suis-je en état de servir ? | PostgreSQL, clés de signature, Redis | 200 ou 503 |
+
+```bash
+curl -s http://localhost:5099/health/ready | jq
+```
+
+Le corps détaille chaque dépendance, son statut et sa durée — un 503 dit lequel des trois manque,
+là où un code seul laisserait chercher.
+
+**Ce qui pèse dans le verdict d'aptitude**
+
+| Dépendance | Poids | Pourquoi |
+|---|---|---|
+| PostgreSQL | bloquante | sans base, l'application ne sait rien répondre |
+| Clés de signature | bloquante | sans elles, tous les jetons seraient refusés |
+| Redis | signalée, non bloquante | le cache est un accélérateur : son absence dégrade, elle ne rend pas inapte |
+
+> **La sonde des clés demande « ai-je des clés ? », pas « Keycloak répond-il ? »** La validation des
+> jetons est locale, à partir des clés publiques mises en cache : une instance qui les a obtenues
+> continue de servir pendant une coupure du serveur d'identité. Sonder sa joignabilité aurait retiré
+> du service une flotte entière — toutes ses instances répondant correctement — le jour d'un
+> redémarrage de Keycloak.
+
+> **`/health` ne consulte volontairement aucune dépendance.** C'est cette sonde qu'un orchestrateur
+> branche sur la vivacité. Si elle échouait faute de dépendance, le conteneur serait tué au lieu
+> d'attendre — et une instance démarrée avant son serveur d'identité entrerait dans une boucle de
+> redémarrage au lieu de patienter hors du service, puis de le rejoindre d'elle-même.
+
+Les quatre comportements ci-dessus sont éprouvés au niveau 3 par `Startup/HealthProbeTest.cs`, qui
+coupe réellement Keycloak et Redis.
+
 ---
 
 ## Tests automatisés
@@ -277,26 +318,44 @@ métier.
 
 ### Commandes
 
+**La voie normale** — un seul point d'entrée, qui rejoue exactement ce que fait `ci-pr.yml` :
+
 ```bash
-# Tous les tests
-dotnet test
-
-# Uniquement les tests d'intégration (niveau 2)
-dotnet test --filter "FullyQualifiedName~Integration"
-
-# Tout sauf eux — utile pour garder une boucle rapide
-dotnet test --filter "FullyQualifiedName!~Integration"
-
-# Avec couverture de code
-dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
-
-# Rapport HTML (outil à installer une seule fois)
-dotnet tool install -g dotnet-reportgenerator-globaltool
-reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" \
-  -reporttypes:Html -classfilters:"-NutritionApi.Application.DTOS.*"
+./scripts/test-all.sh                   # les trois niveaux, couverture fusionnée, seuils
+./scripts/test-all.sh --no-integration  # niveaux 1 et 2 seulement, boucle rapide
+./scripts/test-all.sh --no-build        # réutilise la compilation existante
 ```
 
-Le rapport est généré dans `coverage/report/index.html`.
+Reproduire cet enchaînement à la main demande six commandes et deux chemins de rapports à ne pas
+confondre. Une divergence entre ce qu'on lance chez soi et ce que lance la CI se paie en
+allers-retours sur une pull request.
+
+Les sorties atterrissent là où le SDK les écrit, donc là où un IDE va les chercher :
+
+| Fichier | Contenu |
+|---|---|
+| `tests/<Projet>/TestResults/*.trx` | résultats détaillés, ouvrables dans Visual Studio ou Rider |
+| `tests/<Projet>/TestResults/<guid>/coverage.*.xml` | couverture brute, Cobertura et OpenCover |
+| `coverage/report/index.html` | rapport fusionné des trois niveaux, lisible dans un navigateur |
+
+> **Le script compile tout en Release**, y compris le niveau 3. Ce n'est pas un détail : mesurer une
+> moitié en Debug et l'autre en Release produit un rapport fusionné qui ne décrit aucun binaire réel,
+> et qui passe pourtant le contrôle des seuils. Un faux positif de la barrière censée les empêcher.
+
+**Commandes directes**, quand on vise un point précis :
+
+```bash
+# Un seul niveau
+dotnet test --filter "Level!=3"     # niveaux 1 et 2
+dotnet test --filter "Level=3"      # niveau 3 — exige la pile docker-compose
+
+# Un seul projet, ou une seule classe
+dotnet test tests/NutritionApi.Domain.Tests
+dotnet test --filter "FullyQualifiedName~KeycloakOutageTest"
+
+# Contrôler les seuils sur un rapport déjà produit
+./scripts/check-coverage.sh coverage/report/Cobertura.xml
+```
 
 **Comment les niveaux se sélectionnent**
 
@@ -333,10 +392,8 @@ plusieurs dizaines de secondes là où les tests unitaires se comptent en millis
 
 **Seuils de couverture par couche**
 
-Déclarés dans `tests/coverage.runsettings`, en ligne **et** en branche. Le workflow
-`.github/workflows/ci-unit.yml` lance `dotnet test` avec ce fichier de réglages : les seuils sont
-donc contrôlés à chaque pull request vers `dev`. Ce workflow exclut le niveau 3 (`--filter
-"Level!=3"`), exécuté séparément par `ci-integration.yml`.
+Déclarés dans `tests/coverage.runsettings`, en ligne **et** en branche. C'est la source unique :
+aucun seuil n'est écrit ailleurs, ni dans un workflow, ni dans ce fichier.
 
 | Couche | Seuil |
 |---|---|
@@ -348,8 +405,27 @@ donc contrôlés à chaque pull request vers `dev`. Ce workflow exclut le niveau
 Sont exclus du calcul : les DTOs, `Program.cs`, `DependencyInjection.cs`, les projets de tests et
 tout membre marqué `[ExcludeFromCodeCoverage]`.
 
-> Le badge **Coverage** en tête de ce fichier concerne l'affichage public du taux (Codecov ou
-> équivalent), qui reste à brancher — voir NTR-120. Le contrôle des seuils, lui, est bien actif.
+Le contrôle est assuré par `scripts/check-coverage.sh`, qui lit ces seuils et les compare au
+rapport **fusionné** — niveaux 1, 2 et 3 réunis. Le job `coverage` de `ci-pr.yml` l'exécute à
+chaque pull request vers `dev`, et c'est lui, et lui seul, qui fait échouer la CI sur la
+couverture. Le script s'utilise aussi en local :
+
+```bash
+./scripts/check-coverage.sh coverage/report/Cobertura.xml
+```
+
+> **Pourquoi la fusion importe.** Mesurer une couche sur une partie seulement de ses tests donne
+> un chiffre faux : Infrastructure tombe à 7,9 % quand on écarte le niveau 3, puisque ce sont ces
+> tests-là qui traversent les dépôts EF Core et le cache Redis.
+
+> **Corrigé le 2026-08-02 (NTR-132).** Cette section affirmait auparavant que les seuils étaient
+> contrôlés à chaque pull request. Ils ne l'étaient pas : `coverlet.collector` ne lit pas le bloc
+> `<Thresholds>` d'un runsettings — seule l'intégration MSBuild de Coverlet gère les seuils — et
+> l'action de commentaire de PR laisse `fail_below_threshold` à `false` par défaut. Aucune barrière
+> n'existait.
+
+> Le badge **Coverage** en tête de ce fichier concerne l'affichage public du taux, qui reste à
+> brancher — voir NTR-120.
 
 ---
 

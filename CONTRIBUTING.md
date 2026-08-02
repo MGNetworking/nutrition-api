@@ -36,9 +36,8 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 
 | PR | Workflow | Ce qui s'exécute |
 |----|----------|-----------------|
-| `feature/* → dev` | `ci-unit.yml` | Build + tests de niveaux 1 et 2 (`--filter "Level!=3"`) |
-| `feature/* → dev` | `ci-integration.yml` | Pile docker-compose + tests de niveau 3 (`--filter "Level=3"`) |
-| `main → dev` (sync) | `ci-unit.yml`, `ci-integration.yml` | **ignoré** (`github.head_ref != 'main'`) |
+| `feature/* → dev` | `ci-pr.yml` | Trois jobs : niveaux 1 et 2, niveau 3 sur docker-compose, puis couverture fusionnée et contrôle des seuils |
+| `main → dev` (sync) | `ci-pr.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → prod` | `ci-deploy.yml` | Build Release + déploiement VPS |
 | `main → prod` (sync) | `ci-deploy.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → main` | `ci-release.yml` | Build + tests unitaires + couverture + rapport PR |
@@ -46,10 +45,17 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 
 > Les PRs de synchronisation `main → dev` et `main → prod` ne déclenchent pas le CI — le code vient de `main` qui est déjà testé. Les PRs automatiques de Release Please sont également ignorées pour éviter les boucles.
 
-> `ci-unit.yml` et `ci-integration.yml` tournent **en parallèle** sur une PR vers `dev`, et leurs
+> Dans `ci-pr.yml`, les jobs `unit-tests` et `integration-tests` tournent **en parallèle**, et leurs
 > périmètres sont disjoints : les filtres `Level!=3` et `Level=3` garantissent qu'aucun test n'est
-> joué deux fois ni oublié. `ci-integration.yml` appelle `./scripts/test-integration.sh`, le même
-> script qu'en local — la CI ne déclare aucun service qui lui soit propre.
+> joué deux fois ni oublié — donc que la fusion de leurs deux rapports ne double compte rien. Le
+> second appelle `./scripts/test-integration.sh`, le même script qu'en local : la CI ne déclare
+> aucun service qui lui soit propre.
+>
+> Le job `coverage` attend les deux, fusionne les rapports et exécute `./scripts/check-coverage.sh`.
+> C'est ce contrôle qui fait échouer la PR sur la couverture ; les seuils sont déclarés dans
+> `tests/coverage.runsettings`, seule source. Les deux workflows précédents, `ci-unit.yml` et
+> `ci-integration.yml`, ont été réunis pour cette raison (NTR-168) : deux workflows distincts sur
+> le même événement ne peuvent pas s'attendre, et aucun ne pouvait donc produire un chiffre unique.
 
 ### Smoke tests
 
@@ -69,7 +75,14 @@ Le palier 3 s'authentifie avec un **compte d'exploitation** dédié : un client 
 account, et sa ligne `User` en base. Sans cette ligne, `UserResolutionMiddleware` renvoie 401 —
 indiscernable d'un rejet de jeton, ce qui priverait le smoke test de tout pouvoir de diagnostic.
 
-> Aucun palier n'est implémenté : `Program.cs` ne déclare aucun health check.
+> **Paliers 1 et 2 : les points de terminaison existent** depuis le 2026-08-02 (NTR-88). `/health`
+> répond sans consulter aucune dépendance ; `/health/ready` consulte PostgreSQL et les clés de
+> signature, signale Redis sans en faire dépendre son verdict. Les deux sont anonymes et détaillent
+> chaque dépendance dans leur corps de réponse — ce qui donne au smoke test le pouvoir de désigner la
+> brique en cause.
+>
+> Les smoke tests eux-mêmes restent à écrire : ils s'exécutent après un déploiement, qui n'existe pas
+> encore.
 
 ---
 
@@ -113,7 +126,24 @@ Monte la pile **avec l'API dans un conteneur**, sur le port 5100 et la configura
 production ; le développement quotidien passe par `dev-up.sh` et `dotnet run`, qui laissent le
 débogueur attaché.
 
-### Lancer les tests de niveau 3
+### Lancer les tests
+
+**Avant d'ouvrir une pull request**, un seul point d'entrée, qui rejoue ce que fait `ci-pr.yml` :
+
+```bash
+./scripts/test-all.sh                   # les trois niveaux, couverture fusionnée, contrôle des seuils
+./scripts/test-all.sh --no-integration  # niveaux 1 et 2 seulement, boucle rapide
+```
+
+Il produit les `.trx` dans `tests/<Projet>/TestResults/` et le rapport fusionné dans
+`coverage/report/index.html`. Obtenir le même verdict que la CI **avant** de pousser évite de
+découvrir un échec sur la pull request.
+
+Il compile tout en Release, niveau 3 compris. Mesurer une moitié en Debug et l'autre en Release
+produit un rapport fusionné qui ne décrit aucun binaire réel, et qui passe pourtant le contrôle des
+seuils.
+
+### Le niveau 3 seul
 
 ```bash
 ./scripts/test-integration.sh              # monte la pile puis exécute les tests Level=3

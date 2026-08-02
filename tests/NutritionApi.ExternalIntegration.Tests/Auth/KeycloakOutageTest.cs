@@ -53,44 +53,66 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
         {
             DockerContainer.Start(DockerContainer.Keycloak);
             await DockerContainer.WaitHealthyAsync(DockerContainer.Keycloak, TimeSpan.FromSeconds(240));
+
+            // Le conteneur sain ne suffit pas : l'hôte partagé peut être resté sans clés pendant la
+            // coupure, et le test suivant récolterait un 401 sans rapport avec ce qu'il vérifie.
+            await factory.WaitUntilReadyAsync();
         }
     }
 
     /// <summary>
-    /// serveur d'identité arrêté au démarrage : l'application refuse de démarrer.
+    /// serveur d'identité arrêté au démarrage : l'application démarre, vivante mais non prête.
     /// </summary>
     /// <remarks>
-    /// Sans ce garde-fou, une instance démarrée pendant une indisponibilité n'a aucune clé en cache :
-    /// elle accepte le trafic et refuse **tous** les jetons, pendant que ses voisines fonctionnent.
-    /// Deux instances derrière le même service, deux comportements.
+    /// Le danger reste celui d'origine : une instance démarrée pendant une indisponibilité n'a aucune
+    /// clé en cache, elle refuserait **tous** les jetons pendant que ses voisines fonctionnent.
     /// <para>
-    /// <c>KeycloakAvailabilityService</c> force la récupération des clés au démarrage et interrompt
-    /// l'hôte si elle n'aboutit pas dans le délai imparti. Le test vérifie que la création d'un client
-    /// — qui déclenche le démarrage de l'hôte — lève bien.
+    /// Ce n'est plus l'arrêt du processus qui l'empêche, mais la sonde d'aptitude (NTR-173). Un
+    /// conteneur qui sort en erreur est relancé par l'orchestrateur, et les échecs répétés mènent à un
+    /// <c>CrashLoopBackOff</c> dont le délai double jusqu'à cinq minutes : un serveur d'identité en
+    /// retard de quatre minutes rendait l'API indisponible bien plus longtemps que lui. Répondre 503
+    /// sur <c>/health/ready</c> obtient le même résultat — aucun trafic — sans redémarrage, et
+    /// l'instance rejoint le service d'elle-même dès qu'elle obtient ses clés.
+    /// </para>
+    /// <para>
+    /// Ce que ce cas verrouille, et qui ne va pas de soi : <c>/health</c> répond <b>200</b> pendant ce
+    /// temps. Si la sonde de vivacité échouait elle aussi, le conteneur serait tué et l'on retrouverait
+    /// la boucle de redémarrage que l'on vient de supprimer.
     /// </para>
     /// </remarks>
     [Fact]
-    public async Task Host_ShouldFailToStart_WhenIdentityServerIsDownAtStartup()
+    public async Task Host_ShouldStartNotReady_WhenIdentityServerIsDownAtStartup()
     {
         DockerContainer.Stop(DockerContainer.Keycloak);
 
         try
         {
-            await using var aFroid = new IntegrationFactory();
+            // Le préchargement des clés réessaie jusqu'au bout de son délai avant de renoncer :
+            // attendre les 60 s applicatives n'apprendrait rien de plus que deux secondes.
+            await using var aFroid = IntegrationFactory.AvecPrechargementCourt(2);
 
-            // CreateClient() construit l'hôte et exécute les services hébergés : c'est là que l'échec
-            // se produit, pas à la construction de la fabrique.
-            var echec = Assert.ThrowsAny<Exception>(() => aFroid.CreateClient());
+            // CreateClient() construit l'hôte et exécute les services hébergés. C'est ici que le
+            // démarrage échouait avant NTR-173.
+            using var client = aFroid.CreateClient();
 
-            Assert.Contains(
-                "clés de signature",
-                ExceptionChain.DeroulerLesCauses(echec),
-                StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health")).StatusCode);
+
+            var aptitude = await client.GetAsync("/health/ready");
+
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, aptitude.StatusCode);
+
+            // La réponse nomme la brique en cause : sans ce détail, un 503 ne distinguerait pas une
+            // base absente d'un serveur d'identité absent.
+            Assert.Contains("cles-de-signature", await aptitude.Content.ReadAsStringAsync());
         }
         finally
         {
             DockerContainer.Start(DockerContainer.Keycloak);
             await DockerContainer.WaitHealthyAsync(DockerContainer.Keycloak, TimeSpan.FromSeconds(240));
+
+            // Le conteneur sain ne suffit pas : l'hôte partagé peut être resté sans clés pendant la
+            // coupure, et le test suivant récolterait un 401 sans rapport avec ce qu'il vérifie.
+            await factory.WaitUntilReadyAsync();
         }
     }
 

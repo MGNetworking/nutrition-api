@@ -4,7 +4,12 @@
     <DataCollectors>
       <DataCollector friendlyName="XPlat Code Coverage">
         <Configuration>
-          <Format>cobertura</Format>
+          <!-- Deux formats, deux consommateurs qui ne lisent pas le même (NTR-169) :
+               cobertura  — ReportGenerator, le commentaire de pull request, check-coverage.sh
+               opencover  — SonarQube Cloud. Son analyseur C# ne lit pas le Cobertura, réservé
+                            aux autres langages. Sans ce second format, Sonar afficherait 0 %
+                            de couverture sur un projet qui dépasse 90. -->
+          <Format>cobertura,opencover</Format>
           <Exclude>[*.Tests]*</Exclude>
           <ExcludeByAttribute>ExcludeFromCodeCoverage</ExcludeByAttribute>
           <ExcludeByFile>**/DTOs/**/*.cs,**/Program.cs,**/DependencyInjection.cs</ExcludeByFile>
