@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using NutritionApi.Api.Startup;
 using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.Infrastructure.Persistence;
 
@@ -51,6 +52,17 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
     /// <summary>Vrai tant que la fabrique partagée n'a pas été libérée.</summary>
     private static bool _partageeVivante;
 
+    /// <summary>
+    /// Délai de préchargement des clés du realm, en secondes. Non précisé, la valeur applicative
+    /// s'applique — 60 s.
+    /// </summary>
+    /// <remarks>
+    /// Utile au seul cas du démarrage à froid sans serveur d'identité : le préchargement y réessaie
+    /// jusqu'au bout du délai avant de renoncer, et attendre une minute n'apprendrait rien de plus
+    /// qu'attendre deux secondes.
+    /// </remarks>
+    private readonly int? _delaiPrechargementSecondes;
+
     /// <summary>Base éphémère de cette exécution.</summary>
     public TestDatabase Database { get; }
 
@@ -73,8 +85,22 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
     /// L'attente est déportée sur le pool de threads : bloquer directement sur le contexte de
     /// synchronisation de xUnit exposerait à un interblocage.
     /// </remarks>
-    public IntegrationFactory()
+    /// <remarks>
+    /// <b>Unique constructeur public, et sans paramètre</b> — les deux contraintes viennent de xUnit,
+    /// qui instancie lui-même la fixture de collection : il ne sait résoudre aucun argument, fût-il
+    /// optionnel, et refuse une fixture qui expose plus d'un constructeur public.
+    /// </remarks>
+    public IntegrationFactory() : this(null)
     {
+    }
+
+    /// <param name="delaiPrechargementSecondes">
+    /// Raccourcit le préchargement des clés du realm. Réservé au cas du démarrage à froid.
+    /// </param>
+    private IntegrationFactory(int? delaiPrechargementSecondes)
+    {
+        _delaiPrechargementSecondes = delaiPrechargementSecondes;
+
         Database = Task.Run(TestDatabase.CreateAsync).GetAwaiter().GetResult();
 
         if (_partagee is not null)
@@ -103,6 +129,13 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
         builder.UseSetting("Keycloak:Realm", KeycloakTokens.Realm);
         builder.UseSetting("Keycloak:ServiceClientSecret", KeycloakTokens.ServiceClientSecret);
 
+        if (_delaiPrechargementSecondes is { } delai)
+        {
+            builder.UseSetting(
+                KeycloakAvailabilityService.TimeoutSettingKey,
+                delai.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IOffDumpReader>();
@@ -118,6 +151,19 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
                 options => options.TokenValidationParameters.ClockSkew = TimeSpan.Zero);
         });
     }
+
+    /// <summary>
+    /// Crée une fabrique éphémère dont le préchargement des clés renonce vite.
+    /// </summary>
+    /// <param name="secondes">Délai accordé au préchargement.</param>
+    /// <returns>Une fabrique à libérer par l'appelant.</returns>
+    /// <remarks>
+    /// Réservée au cas du démarrage à froid sans serveur d'identité : le préchargement y réessaie
+    /// jusqu'au bout de son délai avant de renoncer, et attendre les 60 s applicatives n'apprendrait
+    /// rien de plus que deux secondes. Passe par une méthode plutôt qu'un second constructeur public,
+    /// que xUnit refuserait sur une fixture de collection.
+    /// </remarks>
+    public static IntegrationFactory AvecPrechargementCourt(int secondes) => new(secondes);
 
     /// <summary>Crée un client portant un jeton réellement émis par Keycloak.</summary>
     /// <param name="username">Compte du realm — <see cref="KeycloakTokens.StandardUser"/> par défaut.</param>

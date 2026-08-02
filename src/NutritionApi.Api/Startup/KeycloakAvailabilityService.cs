@@ -4,23 +4,35 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 
 /// <summary>
-/// Empêche l'application de démarrer tant que les clés de signature du realm n'ont pas été
-/// récupérées.
+/// Précharge les clés de signature du realm au démarrage, sans jamais empêcher l'application de
+/// démarrer.
 /// </summary>
 /// <remarks>
 /// La validation des jetons est locale : l'API vérifie les signatures avec les clés publiques du
-/// serveur d'identité, mises en cache. Une instance démarrée pendant que celui-ci est indisponible
-/// n'a **aucune clé** — elle accepte le trafic et refuse tous les jetons, pendant que ses voisines,
-/// démarrées plus tôt, fonctionnent normalement. Deux instances derrière le même service, deux
-/// comportements : c'est le pire cas à diagnostiquer.
+/// serveur d'identité, mises en cache. La récupération est paresseuse par défaut — au premier appel
+/// authentifié, pas au démarrage. Ce service la force, pour que la première requête ne la paie pas.
 /// <para>
-/// La récupération est paresseuse par défaut — au premier appel authentifié, pas au démarrage. Ce
-/// service la force, et fait échouer le démarrage si elle n'aboutit pas.
+/// <b>Il interrompait le démarrage jusqu'au 2026-08-02</b> (NTR-173). Le raisonnement d'origine était
+/// juste — une instance sans clés accepte le trafic et refuse tous les jetons — mais le remède
+/// coûtait plus que le mal. Un conteneur qui sort en erreur est relancé par le kubelet, et les échecs
+/// répétés mènent à un <c>CrashLoopBackOff</c> dont le délai double jusqu'à cinq minutes. Un serveur
+/// d'identité en retard de quatre minutes rendait l'API indisponible bien plus longtemps que lui.
 /// </para>
 /// <para>
-/// L'attente est **bornée** plutôt qu'immédiate : dans un cluster, l'API et le serveur d'identité
-/// démarrent souvent ensemble, et quelques secondes de décalage ne justifient pas un cycle de
-/// redémarrage. Passé le délai, l'échec est franc et l'orchestrateur relance l'instance.
+/// Ce que le garde-fou cherchait à empêcher est désormais tenu par la sonde d'aptitude
+/// <c>/health/ready</c> : une instance sans clés répond 503, l'orchestrateur la retire du service, et
+/// elle attend — sans redémarrage — jusqu'à en obtenir. Elle y rejoint le service d'elle-même. Les
+/// instances déjà pourvues, elles, continuent de servir même serveur d'identité à terre.
+/// </para>
+/// <para>
+/// L'attente reste **bornée** : dans un cluster, l'API et le serveur d'identité démarrent souvent
+/// ensemble, et quelques secondes de décalage ne justifient pas d'abandonner le préchargement. Passé
+/// le délai, le service renonce et journalise ; il ne lève pas.
+/// </para>
+/// <para>
+/// À ne pas confondre avec <see cref="KeycloakAdminConfigurationValidator"/>, qui interrompt bel et
+/// bien le démarrage : une clé de configuration absente est une erreur de déploiement, elle ne se
+/// répare pas d'elle-même. Une indisponibilité, si.
 /// </para>
 /// <para>
 /// Implémenté en <see cref="IHostedService"/> à dessein : les tests de niveau 2, qui pointent vers
@@ -56,19 +68,25 @@ public sealed class KeycloakAvailabilityService : IHostedService
         _logger = logger;
     }
 
-    /// <summary>Récupère les clés du realm, en réessayant jusqu'au délai imparti.</summary>
+    /// <summary>
+    /// Récupère les clés du realm, en réessayant jusqu'au délai imparti. Ne lève jamais : un échec
+    /// est journalisé et laissé à la sonde d'aptitude, qui tient l'instance hors du service.
+    /// </summary>
     /// <param name="cancellationToken">Jeton d'annulation du démarrage.</param>
-    /// <exception cref="InvalidOperationException">
-    /// Les clés n'ont pas pu être récupérées dans le délai. L'hôte s'arrête : mieux vaut une instance
-    /// qui refuse de démarrer qu'une instance qui rejette tous les jetons.
-    /// </exception>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         var options = _jwtOptions.Get(JwtBearerDefaults.AuthenticationScheme);
 
-        var manager = options.ConfigurationManager
-            ?? throw new InvalidOperationException(
-                "Aucun gestionnaire de configuration OIDC : la clé Keycloak:Authority est probablement absente.");
+        var manager = options.ConfigurationManager;
+
+        if (manager is null)
+        {
+            _logger.LogError(
+                "Aucun gestionnaire de configuration OIDC : la clé Keycloak:Authority est probablement "
+                + "absente. Aucun jeton ne pourra être validé — /health/ready restera négatif.");
+
+            return;
+        }
 
         var timeout = TimeSpan.FromSeconds(
             _configuration.GetValue(TimeoutSettingKey, DefaultTimeoutSeconds));
@@ -103,10 +121,15 @@ public sealed class KeycloakAvailabilityService : IHostedService
 
             if (DateTime.UtcNow >= deadline)
             {
-                throw new InvalidOperationException(
-                    $"Les clés de signature du realm n'ont pas pu être récupérées en {timeout.TotalSeconds:0} s "
-                    + $"depuis « {options.Authority} ». L'application ne peut pas valider de jetons : démarrage interrompu.",
-                    dernierEchec);
+                _logger.LogError(
+                    dernierEchec,
+                    "Les clés de signature du realm n'ont pas pu être récupérées en {Timeout} s depuis "
+                    + "« {Authority} ». L'application démarre tout de même : elle se déclarera non prête "
+                    + "sur /health/ready et ne recevra aucun trafic tant qu'elle n'aura pas de clés.",
+                    timeout.TotalSeconds,
+                    options.Authority);
+
+                return;
             }
 
             _logger.LogWarning(
