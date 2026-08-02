@@ -26,11 +26,11 @@ cd "$REPO_ROOT"
 REPORT="${1:-coverage/report/Cobertura.xml}"
 SETTINGS="tests/coverage.runsettings"
 
-[ -f "$REPORT" ]   || fail "Rapport de couverture introuvable : $REPORT"
-[ -f "$SETTINGS" ] || fail "Fichier de réglages introuvable : $SETTINGS"
+[[ -f "$REPORT" ]]   || fail "Rapport de couverture introuvable : $REPORT"
+[[ -f "$SETTINGS" ]] || fail "Fichier de réglages introuvable : $SETTINGS"
 
 thresholds="$(grep -oE '<Coverage Assembly="[^"]+" Line="[0-9]+" Branch="[0-9]+"' "$SETTINGS" || true)"
-[ -n "$thresholds" ] || fail "Aucun seuil déclaré dans $SETTINGS — le bloc <Thresholds> est vide ou absent."
+[[ -n "$thresholds" ]] || fail "Aucun seuil déclaré dans $SETTINGS — le bloc <Thresholds> est vide ou absent."
 
 info "Contrôle des seuils de couverture"
 printf "\n  %-28s %-18s %-18s\n" "Couche" "Lignes" "Branches"
@@ -47,7 +47,7 @@ while IFS= read -r decl; do
 
     # Un assembly déclaré mais absent du rapport est une erreur, pas un succès :
     # il signale un renommage de projet, ou une exécution partielle des tests.
-    if [ -z "$measured" ]; then
+    if [[ -z "$measured" ]]; then
         printf "  %-28s %s\n" "$assembly" "absent du rapport"
         violations=$((violations + 1))
         continue
@@ -61,8 +61,8 @@ while IFS= read -r decl; do
             'BEGIN { printf "%.1f %.1f %d %d", l*100, b*100, (l*100 >= ml), (b*100 >= mb) }'
     )"
 
-    [ "$line_ok" -eq 1 ]   && line_mark="OK"   || { line_mark="SOUS SEUIL";   violations=$((violations + 1)); }
-    [ "$branch_ok" -eq 1 ] && branch_mark="OK" || { branch_mark="SOUS SEUIL"; violations=$((violations + 1)); }
+    [[ "$line_ok" -eq 1 ]]   && line_mark="OK"   || { line_mark="SOUS SEUIL";   violations=$((violations + 1)); }
+    [[ "$branch_ok" -eq 1 ]] && branch_mark="OK" || { branch_mark="SOUS SEUIL"; violations=$((violations + 1)); }
 
     printf "  %-28s %5s%% / %3s%% %-6s %5s%% / %3s%% %-6s\n" \
         "$assembly" "$line_pct" "$min_line" "$line_mark" "$branch_pct" "$min_branch" "$branch_mark"
@@ -70,7 +70,7 @@ done <<< "$thresholds"
 
 printf "\n"
 
-if [ "$violations" -gt 0 ]; then
+if [[ "$violations" -gt 0 ]]; then
     fail "$violations seuil(s) non tenu(s). Les seuils sont déclarés dans $SETTINGS."
 fi
 

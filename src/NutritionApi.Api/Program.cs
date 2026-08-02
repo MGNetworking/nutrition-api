@@ -22,6 +22,10 @@ const string FrontCorsPolicy = "front";
 const string HealthPath = "/health";
 const string ReadyPath = "/health/ready";
 
+// Marque les sondes que /health/ready exécute. Une sonde sans ce marqueur existe toujours, mais
+// n'entre dans aucun verdict — c'est le tri entre vivacité et aptitude.
+const string ReadyTag = "ready";
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Middlewares ────────────────────────────────────────────────────────────────
@@ -93,18 +97,18 @@ builder.Services.AddHostedService<KeycloakAvailabilityService>();
 // ── Sondes de santé ────────────────────────────────────────────────────────────
 // Deux questions distinctes, deux points de terminaison (NTR-88) :
 //   /health       suis-je vivant ?          — ne consulte rien
-//   /health/ready suis-je en état de servir ? — consulte les dépendances marquées "ready"
+//   /health/ready suis-je en état de servir ? — consulte les dépendances marquées ReadyTag
 //
 // /health ne doit consulter aucune dépendance : c'est ce qui permet à un pod d'attendre ses clés
 // sans être tué par la sonde de vivacité, et donc de rester en attente au lieu d'entrer dans une
 // boucle de redémarrage.
 builder.Services.AddHealthChecks()
     // Bloquante : sans base, l'application ne sait rien répondre.
-    .AddDbContextCheck<AppDbContext>("postgresql", tags: ["ready"])
+    .AddDbContextCheck<AppDbContext>("postgresql", tags: [ReadyTag])
     // Bloquante, mais sur « ai-je des clés ? » et non « Keycloak répond-il ? » — voir la sonde.
-    .AddCheck<SigningKeysHealthCheck>(SigningKeysHealthCheck.Name, tags: ["ready"])
+    .AddCheck<SigningKeysHealthCheck>(SigningKeysHealthCheck.Name, tags: [ReadyTag])
     // Non bloquante : renvoie Degraded, publié dans la réponse, sans faire échouer l'aptitude.
-    .AddCheck<RedisHealthCheck>(RedisHealthCheck.Name, HealthStatus.Degraded, tags: ["ready"]);
+    .AddCheck<RedisHealthCheck>(RedisHealthCheck.Name, HealthStatus.Degraded, tags: [ReadyTag]);
 
 // ── Autorisation ───────────────────────────────────────────────────────────────
 // AdminOnly : réservé aux endpoints /api/v1/admin — rôle "admin" requis dans Keycloak
@@ -210,7 +214,7 @@ app.MapHealthChecks(HealthPath, new HealthCheckOptions
 // publié dégradé sans faire échouer l'aptitude — un statut Degraded répond 200.
 app.MapHealthChecks(ReadyPath, new HealthCheckOptions
 {
-    Predicate = sonde => sonde.Tags.Contains("ready"),
+    Predicate = sonde => sonde.Tags.Contains(ReadyTag),
     ResponseWriter = HealthReportWriter.WriteAsync
 }).AllowAnonymous();
 

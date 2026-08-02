@@ -139,7 +139,7 @@ jobs:
       # Le commentaire est publié avant le contrôle : quand un seuil casse, on veut voir les
       # chiffres sur la pull request, pas seulement un job rouge.
       - name: Commentaire couverture sur PR
-        uses: 5monkeys/cobertura-action@v14
+        uses: 5monkeys/cobertura-action@ee5787cc56634acddedc51f21c7947985531e6eb # v14
         with:
           path: coverage/report/Cobertura.xml
           minimum_coverage: 75
@@ -158,6 +158,12 @@ jobs:
       # Le scanner .NET n'est pas un simple lecteur de fichiers : il s'insère dans MSBuild entre
       # `begin` et `end` pour analyser le code compilé. D'où un build ici — mais pas de tests,
       # qui ont déjà tourné dans les deux jobs précédents et dont on récupère les rapports.
+      #
+      # sonar.coverage.exclusions reprend l'ExcludeByFile de tests/coverage.runsettings, et doit
+      # le suivre. Les deux outils ne se lisent pas : Coverlet retire ces fichiers du rapport,
+      # après quoi Sonar voit un fichier analysé sans donnée de couverture — et le compte comme
+      # non couvert. Les 60 lignes ajoutées à Program.cs suffisaient à faire tomber la couverture
+      # du code neuf à 65 %, sous le seuil de 80 % du quality gate.
       - name: Setup Java
         if: env.SONAR_TOKEN != ''
         uses: actions/setup-java@v4
@@ -183,7 +189,8 @@ jobs:
             /o:"mgnetworking" \
             /d:sonar.token="${SONAR_TOKEN}" \
             /d:sonar.host.url="https://sonarcloud.io" \
-            /d:sonar.cs.opencover.reportsPaths="coverage/**/coverage.opencover.xml"
+            /d:sonar.cs.opencover.reportsPaths="coverage/**/coverage.opencover.xml" \
+            /d:sonar.coverage.exclusions="**/DTOs/**/*.cs,**/Program.cs,**/DependencyInjection.cs,scripts/**/*.sh"
           dotnet build nutrition-api.slnx --configuration Release
           dotnet sonarscanner end /d:sonar.token="${SONAR_TOKEN}"
 

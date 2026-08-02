@@ -43,6 +43,11 @@ public static class HealthReportWriter
                 })
         };
 
-        return context.Response.WriteAsync(JsonSerializer.Serialize(charge, JsonOptions));
+        // Le jeton d'annulation de la requête est transmis : un client qui raccroche — et
+        // l'orchestrateur le fait dès que sa sonde expire — n'a plus besoin de la réponse. Sans
+        // lui, l'écriture se poursuivrait sur une connexion fermée.
+        return context.Response.WriteAsync(
+            JsonSerializer.Serialize(charge, JsonOptions),
+            context.RequestAborted);
     }
 }
