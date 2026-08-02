@@ -2,6 +2,7 @@ namespace NutritionApi.Api.Tests.Level1;
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Application.Interfaces.Repositories;
@@ -16,7 +17,8 @@ public class UserResolutionMiddlewareTest
 
     public UserResolutionMiddlewareTest()
     {
-        _middleware = new UserResolutionMiddleware(_userRepositoryMock.Object);
+        _middleware = new UserResolutionMiddleware(
+            _userRepositoryMock.Object, NullLogger<UserResolutionMiddleware>.Instance);
     }
 
     [Fact]

@@ -43,17 +43,28 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
     public static readonly TimeSpan DelaiParDefaut = TimeSpan.FromSeconds(5);
 
     private readonly IOptionsMonitor<JwtBearerOptions> _jwtOptions;
+    private readonly ILogger<SigningKeysHealthCheck> _logger;
     private readonly TimeSpan _delai;
 
     /// <summary>Construit la sonde.</summary>
     /// <param name="jwtOptions">Options du schéma JWT — portent le gestionnaire de configuration OIDC.</param>
+    /// <param name="logger">
+    /// Journaliseur. Chaque verdict d'inaptitude y laisse une trace (NTR-137) : l'orchestrateur
+    /// enregistre bien l'échec de la sonde, mais ni sa cause — il ne lit que le code HTTP — ni
+    /// au-delà d'une heure, durée de vie de ses événements. Sans cette entrée, un incident de nuit
+    /// ne serait plus explicable au matin.
+    /// </param>
     /// <param name="delai">
     /// Délai avant renoncement. Laissé vide en production ; un test qui éprouve cette branche en
     /// passe un court, faute de quoi chaque exécution attendrait cinq secondes pour rien.
     /// </param>
-    public SigningKeysHealthCheck(IOptionsMonitor<JwtBearerOptions> jwtOptions, TimeSpan? delai = null)
+    public SigningKeysHealthCheck(
+        IOptionsMonitor<JwtBearerOptions> jwtOptions,
+        ILogger<SigningKeysHealthCheck> logger,
+        TimeSpan? delai = null)
     {
         _jwtOptions = jwtOptions;
+        _logger = logger;
         _delai = delai ?? DelaiParDefaut;
     }
 
@@ -66,6 +77,10 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
 
         if (options.ConfigurationManager is null)
         {
+            _logger.LogError(
+                "Sonde des clés de signature : aucun gestionnaire de configuration OIDC. "
+                + "La clé Keycloak:Authority est probablement absente.");
+
             return HealthCheckResult.Unhealthy(
                 "Aucun gestionnaire de configuration OIDC : la clé Keycloak:Authority est probablement absente.");
         }
@@ -79,6 +94,11 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
 
             if (configuration.SigningKeys.Count == 0)
             {
+                _logger.LogError(
+                    "Sonde des clés de signature : le serveur d'identité {Authority} n'a publié "
+                    + "aucune clé. Aucun jeton ne peut être validé.",
+                    options.Authority);
+
                 return HealthCheckResult.Unhealthy(
                     $"Le serveur d'identité « {options.Authority} » n'a publié aucune clé de signature. "
                     + "Aucun jeton ne peut être validé.");
@@ -89,6 +109,11 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            _logger.LogError(
+                "Sonde des clés de signature : {Authority} n'a pas répondu en {Delai} s.",
+                options.Authority,
+                _delai.TotalSeconds);
+
             return HealthCheckResult.Unhealthy(
                 $"Les clés de signature n'ont pas pu être obtenues en {_delai.TotalSeconds:0} s "
                 + $"depuis « {options.Authority} ».");
@@ -97,6 +122,11 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
         {
             // Ce cas ne se produit que si aucune configuration valide n'a jamais été obtenue : une
             // fois le cache peuplé, un échec de rafraîchissement ne lève pas.
+            _logger.LogError(
+                exception,
+                "Sonde des clés de signature : aucune clé disponible et {Authority} est injoignable.",
+                options.Authority);
+
             return HealthCheckResult.Unhealthy(
                 $"Aucune clé de signature disponible, et « {options.Authority} » est injoignable.",
                 exception);

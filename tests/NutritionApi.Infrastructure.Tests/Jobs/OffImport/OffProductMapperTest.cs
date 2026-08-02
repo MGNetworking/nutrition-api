@@ -19,7 +19,7 @@ public class OffProductMapperTest
              "nutriments":{"energy-kcal_100g":539,"proteins_100g":6.3,"carbohydrates_100g":57.5,"fat_100g":30.9}}
             """;
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Equal("3017620422003", product!.OffId);
@@ -45,7 +45,7 @@ public class OffProductMapperTest
     {
         var json = "{\"code\":\"1\",\"product_name\":\"P\",\"nutriments\":{\"proteins_100g\":" + rawProteins + "}}";
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Equal(expected, product!.ProteinsPer100g);
@@ -62,7 +62,7 @@ public class OffProductMapperTest
             {"code":"1","product_name":"P","allergens_tags":["en:milk","en:unknown-xyz","en:gluten"]}
             """;
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Equal(new[] { Allergen.Milk, Allergen.Gluten }, product!.AllergensTags);
@@ -76,7 +76,7 @@ public class OffProductMapperTest
             {"code":"1","product_name":"P","allergens_tags":["en:milk","en:milk"]}
             """;
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Equal(new[] { Allergen.Milk }, product!.AllergensTags);
@@ -87,7 +87,7 @@ public class OffProductMapperTest
     {
         const string json = """{"code":"1","product_name":"P"}""";
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Empty(product!.AllergensTags);
@@ -102,7 +102,7 @@ public class OffProductMapperTest
     {
         const string json = """{"code":"1","product_name":"P"}""";
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Equal(0f, product!.CaloriesPer100g);
@@ -116,7 +116,7 @@ public class OffProductMapperTest
     {
         const string json = """{"code":"1","product_name":"P","nutriments":{"proteins_100g":"7.4"}}""";
 
-        var product = OffProductMapper.TryMap(json);
+        var product = OffProductMapper.TryMap(json, out _);
 
         Assert.NotNull(product);
         Assert.Equal(7, product!.ProteinsPer100g);
@@ -130,7 +130,7 @@ public class OffProductMapperTest
     public void TryMap_WhenCodeMissing_ReturnsNull()
     {
         const string json = """{"product_name":"P","nutriments":{}}""";
-        Assert.Null(OffProductMapper.TryMap(json));
+        Assert.Null(OffProductMapper.TryMap(json, out _));
     }
 
     [Theory]
@@ -139,14 +139,14 @@ public class OffProductMapperTest
     [InlineData("""{"code":"1","product_name":"   "}""")]
     public void TryMap_WhenNameMissingOrBlank_ReturnsNull(string json)
     {
-        Assert.Null(OffProductMapper.TryMap(json));
+        Assert.Null(OffProductMapper.TryMap(json, out _));
     }
 
     [Fact]
     public void TryMap_WhenNegativeNutriment_ReturnsNull()
     {
         const string json = """{"code":"1","product_name":"P","nutriments":{"proteins_100g":-5}}""";
-        Assert.Null(OffProductMapper.TryMap(json));
+        Assert.Null(OffProductMapper.TryMap(json, out _));
     }
 
     [Theory]
@@ -155,6 +155,33 @@ public class OffProductMapperTest
     [InlineData("   ")]
     public void TryMap_WhenInvalidJson_ReturnsNull(string json)
     {
-        Assert.Null(OffProductMapper.TryMap(json));
+        Assert.Null(OffProductMapper.TryMap(json, out _));
+    }
+
+    // ---------------------------------------------------------------------
+    // Motif du rejet (NTR-137)
+    // ---------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("{ ceci n'est pas du json", OffRejection.JsonInvalide)]
+    [InlineData("null", OffRejection.LigneVide)]
+    [InlineData("""{"product_name":"P","nutriments":{}}""", OffRejection.IdentiteAbsente)]
+    [InlineData("""{"code":"1","product_name":"P","nutriments":{"proteins_100g":-5}}""", OffRejection.ValeurAberrante)]
+    public void TryMap_WhenRejected_NamesTheReason(string json, OffRejection attendu)
+    {
+        Assert.Null(OffProductMapper.TryMap(json, out var rejet));
+
+        // Le compte des lignes ignorées ne disait pas pourquoi elles l'étaient : sur plusieurs
+        // millions de lignes, un dump corrompu et un mapping trop strict se ressemblaient.
+        Assert.Equal(attendu, rejet);
+    }
+
+    [Fact]
+    public void TryMap_WhenMapped_ReportsNoReason()
+    {
+        const string json = """{"code":"1","product_name":"P","nutriments":{}}""";
+
+        Assert.NotNull(OffProductMapper.TryMap(json, out var rejet));
+        Assert.Equal(OffRejection.Aucun, rejet);
     }
 }

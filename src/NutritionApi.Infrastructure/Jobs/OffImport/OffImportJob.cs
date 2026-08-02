@@ -50,12 +50,23 @@ public sealed class OffImportJob : IOffImportJob
         var skipped = 0;
         var batch = new List<OffProduct>(_batchSize);
 
+        // Ventilation des rejets par motif (NTR-137). Le seul total ne permettait pas de distinguer
+        // un dump corrompu d'un mapping devenu trop strict.
+        var rejets = new Dictionary<OffRejection, int>();
+
         await foreach (var line in _reader.ReadLinesAsync())
         {
-            var product = OffProductMapper.TryMap(line);
+            var product = OffProductMapper.TryMap(line, out var rejet);
             if (product is null)
             {
                 skipped++;
+                rejets[rejet] = rejets.GetValueOrDefault(rejet) + 1;
+
+                // Niveau Debug à dessein : un dump corrompu produirait des millions de lignes. Le
+                // motif détaillé ne s'active que le temps d'une enquête, le bilan ci-dessous suffit
+                // en régime normal.
+                _logger.LogDebug("Ligne du dump écartée — motif {Rejet}.", rejet);
+
                 continue;
             }
 
@@ -71,8 +82,15 @@ public sealed class OffImportJob : IOffImportJob
             imported += await PersistBatchAsync(batch);
 
         _logger.LogInformation(
-            "Import Open Food Facts terminé : {Imported} produits importés, {Skipped} ignorés.",
-            imported, skipped);
+            "Import Open Food Facts terminé : {Imported} produits importés, {Skipped} ignorés — "
+            + "JSON invalide : {JsonInvalide}, ligne vide : {LigneVide}, identité absente : "
+            + "{IdentiteAbsente}, valeur aberrante : {ValeurAberrante}.",
+            imported,
+            skipped,
+            rejets.GetValueOrDefault(OffRejection.JsonInvalide),
+            rejets.GetValueOrDefault(OffRejection.LigneVide),
+            rejets.GetValueOrDefault(OffRejection.IdentiteAbsente),
+            rejets.GetValueOrDefault(OffRejection.ValeurAberrante));
 
         // Le catalogue a changé : les recherches mémorisées portent sur des données périmées.
         // Aucun produit importé = catalogue inchangé, inutile de vider le cache.

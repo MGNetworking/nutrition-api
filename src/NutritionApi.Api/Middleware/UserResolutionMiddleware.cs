@@ -18,10 +18,14 @@ namespace NutritionApi.Api.Middleware;
 public class UserResolutionMiddleware : IMiddleware
 {
     private readonly IUserRepository _userRepository;
+    private readonly ILogger<UserResolutionMiddleware> _logger;
 
-    public UserResolutionMiddleware(IUserRepository userRepository)
+    public UserResolutionMiddleware(
+        IUserRepository userRepository,
+        ILogger<UserResolutionMiddleware> logger)
     {
         _userRepository = userRepository;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
@@ -32,7 +36,20 @@ public class UserResolutionMiddleware : IMiddleware
             var user = await _userRepository.GetByKeycloakIdAsync(keycloakId!);
             if (user is null) { context.Response.StatusCode = 401; return; }
             context.Items["UserId"] = user.Id;
+
+            // Attache l'identifiant applicatif à toute entrée écrite en aval (NTR-137). C'est le
+            // seul endroit qui le connaisse : RequestLoggingMiddleware s'exécute avant la
+            // résolution, et les controllers n'ont pas à s'en soucier.
+            //
+            // L'identifiant de trace n'est pas ajouté ici — Serilog l'attache lui-même à chaque
+            // entrée, y compris celles des requêtes anonymes que ce middleware ne traite pas.
+            using (_logger.BeginScope(new Dictionary<string, object> { ["UserId"] = user.Id }))
+            {
+                await next(context);
+                return;
+            }
         }
+
         await next(context);
     }
 

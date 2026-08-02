@@ -2,6 +2,7 @@ namespace NutritionApi.Api.Tests.Level1;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -130,6 +131,6 @@ public class SigningKeysHealthCheckTest
         var monitor = new Mock<IOptionsMonitor<JwtBearerOptions>>();
         monitor.Setup(m => m.Get(JwtBearerDefaults.AuthenticationScheme)).Returns(options);
 
-        return new SigningKeysHealthCheck(monitor.Object, DelaiCourt);
+        return new SigningKeysHealthCheck(monitor.Object, NullLogger<SigningKeysHealthCheck>.Instance, DelaiCourt);
     }
 }

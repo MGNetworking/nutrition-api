@@ -35,17 +35,27 @@ public sealed class RedisHealthCheck : IHealthCheck
     public static readonly TimeSpan DelaiParDefaut = TimeSpan.FromSeconds(3);
 
     private readonly IConnectionMultiplexer _redis;
+    private readonly ILogger<RedisHealthCheck> _logger;
     private readonly TimeSpan _delai;
 
     /// <summary>Construit la sonde.</summary>
     /// <param name="redis">Multiplexeur partagé, enregistré en singleton par la couche Infrastructure.</param>
+    /// <param name="logger">
+    /// Journaliseur. Chaque dégradation y laisse une trace (NTR-137) : l'orchestrateur n'enregistre
+    /// que le code HTTP, jamais la cause, et ses événements expirent en une heure. Le niveau est
+    /// <c>Warning</c> et non <c>Error</c> — le service continue de répondre, en repli sur PostgreSQL.
+    /// </param>
     /// <param name="delai">
     /// Délai avant renoncement. Laissé vide en production ; un test qui éprouve cette branche en
     /// passe un court, faute de quoi chaque exécution attendrait trois secondes pour rien.
     /// </param>
-    public RedisHealthCheck(IConnectionMultiplexer redis, TimeSpan? delai = null)
+    public RedisHealthCheck(
+        IConnectionMultiplexer redis,
+        ILogger<RedisHealthCheck> logger,
+        TimeSpan? delai = null)
     {
         _redis = redis;
+        _logger = logger;
         _delai = delai ?? DelaiParDefaut;
     }
 
@@ -56,6 +66,9 @@ public sealed class RedisHealthCheck : IHealthCheck
     {
         if (!_redis.IsConnected)
         {
+            _logger.LogWarning(
+                "Sonde Redis : cache injoignable — les recherches d'aliments retombent sur PostgreSQL.");
+
             return HealthCheckResult.Degraded(
                 "Cache Redis injoignable — les recherches d'aliments retombent sur PostgreSQL.");
         }
@@ -71,11 +84,19 @@ public sealed class RedisHealthCheck : IHealthCheck
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
+            _logger.LogWarning(
+                "Sonde Redis : aucune réponse en {Delai} s — repli sur PostgreSQL.",
+                _delai.TotalSeconds);
+
             return HealthCheckResult.Degraded(
                 $"Cache Redis sans réponse en {_delai.TotalSeconds:0} s — repli sur PostgreSQL.");
         }
         catch (Exception exception)
         {
+            _logger.LogWarning(
+                exception,
+                "Sonde Redis : cache en erreur — les recherches d'aliments retombent sur PostgreSQL.");
+
             return HealthCheckResult.Degraded(
                 "Cache Redis en erreur — les recherches d'aliments retombent sur PostgreSQL.",
                 exception);

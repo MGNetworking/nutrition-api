@@ -1,6 +1,7 @@
 namespace NutritionApi.Api.Tests.Level1;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NutritionApi.Api.HealthChecks;
 using StackExchange.Redis;
@@ -31,7 +32,7 @@ public class RedisHealthCheckTest
         var redis = new Mock<IConnectionMultiplexer>();
         redis.SetupGet(r => r.IsConnected).Returns(false);
 
-        var resultat = await new RedisHealthCheck(redis.Object, DelaiCourt)
+        var resultat = await new RedisHealthCheck(redis.Object, NullLogger<RedisHealthCheck>.Instance, DelaiCourt)
             .CheckHealthAsync(new HealthCheckContext());
 
         Assert.Equal(HealthStatus.Degraded, resultat.Status);
@@ -106,6 +107,6 @@ public class RedisHealthCheckTest
         redis.SetupGet(r => r.IsConnected).Returns(true);
         redis.Setup(r => r.GetDatabase(It.IsAny<int>(), It.IsAny<object>())).Returns(database.Object);
 
-        return new RedisHealthCheck(redis.Object, DelaiCourt);
+        return new RedisHealthCheck(redis.Object, NullLogger<RedisHealthCheck>.Instance, DelaiCourt);
     }
 }

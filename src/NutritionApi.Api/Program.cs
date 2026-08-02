@@ -13,6 +13,7 @@ using NutritionApi.Application;
 using NutritionApi.Infrastructure;
 using NutritionApi.Infrastructure.Persistence;
 using NutritionApi.Infrastructure.Scheduling;
+using Serilog;
 using System.Reflection;
 
 // Politique CORS appliquée aux appels du front — définie plus bas à partir de la configuration.
@@ -27,6 +28,20 @@ const string ReadyPath = "/health/ready";
 const string ReadyTag = "ready";
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Journalisation ─────────────────────────────────────────────────────────────
+// Serilog remplace les fournisseurs de sortie d'ASP.NET Core (NTR-137). Le code applicatif ne
+// change pas : il continue d'écrire par ILogger, qui reste l'abstraction. Seule la mise en forme
+// et la destination changent — JSON en production, texte lisible en développement.
+//
+// Tout se règle dans la section Serilog de la configuration, y compris les niveaux par catégorie :
+// la section Logging n'est plus lue une fois ces fournisseurs remplacés.
+//
+// Aucune destination de collecte n'est branchée : le backend n'est pas arrêté. Le jour venu, un
+// sink s'ajoute ici sans qu'une ligne de code applicatif bouge.
+builder.Services.AddSerilog((services, configuration) => configuration
+    .ReadFrom.Configuration(builder.Configuration)
+    .ReadFrom.Services(services));
 
 // ── Middlewares ────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<RequestLoggingMiddleware>();

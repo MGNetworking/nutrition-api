@@ -5,6 +5,32 @@ using System.Text.Json.Serialization;
 using NutritionApi.Domain.Enums;
 
 /// <summary>
+/// Motif pour lequel une ligne du dump a été écartée (NTR-137).
+/// </summary>
+/// <remarks>
+/// Le compte des lignes ignorées ne suffit pas à diagnostiquer un import : sur plusieurs millions
+/// de lignes, deux millions de rejets peuvent venir d'un dump corrompu comme d'un mapping devenu
+/// trop strict. Ces deux causes n'appellent pas la même réaction, et rien ne les distinguait.
+/// </remarks>
+public enum OffRejection
+{
+    /// <summary>La ligne a été convertie — aucun rejet.</summary>
+    Aucun = 0,
+
+    /// <summary>La ligne n'est pas un JSON exploitable.</summary>
+    JsonInvalide,
+
+    /// <summary>Le JSON est valide mais ne décrit aucun produit.</summary>
+    LigneVide,
+
+    /// <summary>Code-barres ou nom absent — le catalogue ne saurait pas désigner ce produit.</summary>
+    IdentiteAbsente,
+
+    /// <summary>Une valeur nutritionnelle négative — le produit est écarté plutôt que faussé.</summary>
+    ValeurAberrante
+}
+
+/// <summary>
 /// Traduit une ligne JSON du dump Open Food Facts en <see cref="OffProduct"/> normalisé :
 /// extraction des champs, arrondi des valeurs nutritionnelles, correspondance des allergènes.
 /// </summary>
@@ -40,8 +66,13 @@ public static class OffProductMapper
     /// est inexploitable (JSON invalide, code ou nom absent, valeur nutritionnelle négative).
     /// </summary>
     /// <param name="jsonLine">Une ligne du dump JSONL Open Food Facts.</param>
+    /// <param name="rejet">
+    /// Motif du rejet, ou <see cref="OffRejection.Aucun"/> si la ligne a été convertie. Remonté à
+    /// l'appelant plutôt que journalisé ici : cette classe est statique et n'a donc pas de
+    /// journaliseur, et l'y introduire lui ferait porter une responsabilité qui n'est pas la sienne.
+    /// </param>
     /// <returns>Le produit normalisé, ou <c>null</c> s'il doit être ignoré.</returns>
-    public static OffProduct? TryMap(string jsonLine)
+    public static OffProduct? TryMap(string jsonLine, out OffRejection rejet)
     {
         RawProduct? raw;
         try
@@ -50,18 +81,25 @@ public static class OffProductMapper
         }
         catch (JsonException)
         {
+            rejet = OffRejection.JsonInvalide;
             return null;
         }
 
         if (raw is null)
+        {
+            rejet = OffRejection.LigneVide;
             return null;
+        }
 
         var offId = raw.Code?.Trim();
         var name = raw.ProductName?.Trim();
 
         // Un produit sans code-barres ou sans nom n'est pas exploitable par le catalogue.
         if (string.IsNullOrWhiteSpace(offId) || string.IsNullOrWhiteSpace(name))
+        {
+            rejet = OffRejection.IdentiteAbsente;
             return null;
+        }
 
         var calories = raw.Nutriments?.EnergyKcal ?? 0f;
         var proteins = ToInt(raw.Nutriments?.Proteins);
@@ -70,7 +108,12 @@ public static class OffProductMapper
 
         // Valeurs aberrantes (négatives) → produit ignoré plutôt que faussé.
         if (calories < 0 || proteins < 0 || carbs < 0 || fats < 0)
+        {
+            rejet = OffRejection.ValeurAberrante;
             return null;
+        }
+
+        rejet = OffRejection.Aucun;
 
         return new OffProduct(offId, name, calories, proteins, carbs, fats, MapAllergens(raw.AllergensTags));
     }
