@@ -1,4 +1,5 @@
 using Npgsql;
+using NutritionApi.Infrastructure.Observability;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -101,7 +102,12 @@ public static class ObservabilityExtensions
             {
                 metriques
                     .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation();
+                    .AddHttpClientInstrumentation()
+                    // Saturation du pool de connexions PostgreSQL — publiée par Npgsql (NTR-138).
+                    .AddNpgsqlInstrumentation()
+                    // Taux de succès du cache et issue des jobs : les seules mesures que le projet
+                    // produit lui-même, faute de bibliothèque qui les connaisse (NTR-138).
+                    .AddMeter(InfrastructureMetrics.MeterName);
 
                 AppliquerExportateurs(
                     versConsole, pointDeCollecte,

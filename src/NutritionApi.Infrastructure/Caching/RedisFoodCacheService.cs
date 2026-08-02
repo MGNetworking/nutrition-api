@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NutritionApi.Application.DTOS.FoodItems;
 using NutritionApi.Application.Interfaces.ExternalServices;
+using NutritionApi.Infrastructure.Observability;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -29,15 +30,18 @@ public sealed class RedisFoodCacheService : IFoodCacheService
 
     private readonly IConnectionMultiplexer _redis;
     private readonly ILogger<RedisFoodCacheService> _logger;
+    private readonly InfrastructureMetrics _metriques;
     private readonly TimeSpan _ttl;
 
     public RedisFoodCacheService(
         IConnectionMultiplexer redis,
         IConfiguration configuration,
-        ILogger<RedisFoodCacheService> logger)
+        ILogger<RedisFoodCacheService> logger,
+        InfrastructureMetrics metriques)
     {
         _redis = redis;
         _logger = logger;
+        _metriques = metriques;
         _ttl = TimeSpan.FromHours(configuration.GetValue("Redis:SearchCacheTtlHours", DefaultTtlHours));
     }
 
@@ -66,12 +70,19 @@ public sealed class RedisFoodCacheService : IFoodCacheService
         catch (RedisException ex)
         {
             _logger.LogWarning(ex, "Cache indisponible en lecture — repli sur la base de données");
+            _metriques.CacheFailure();
             return null;
         }
 
-        return cached.IsNullOrEmpty
-            ? null
-            : JsonSerializer.Deserialize<List<FoodItemSearchResponse>>(cached.ToString());
+        if (cached.IsNullOrEmpty)
+        {
+            _metriques.CacheMiss();
+            return null;
+        }
+
+        _metriques.CacheHit();
+
+        return JsonSerializer.Deserialize<List<FoodItemSearchResponse>>(cached.ToString());
     }
 
     /// <summary>

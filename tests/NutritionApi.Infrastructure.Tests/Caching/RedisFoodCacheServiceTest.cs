@@ -1,12 +1,16 @@
 namespace NutritionApi.Infrastructure.Tests.Caching;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NutritionApi.Application.DTOS.FoodItems;
 using NutritionApi.Domain.Enums;
 using NutritionApi.Infrastructure.Caching;
+using NutritionApi.Infrastructure.Observability;
 using StackExchange.Redis;
+using System.Diagnostics.Metrics;
 using System.Net;
 using System.Text.Json;
 
@@ -14,11 +18,15 @@ using System.Text.Json;
 public class RedisFoodCacheServiceTest
 {
     private const string PouletKey = "food:search:v1:poulet";
+    private const string InstrumentDesRecherches = "nutrition.cache.lookups";
 
     private readonly Mock<IConnectionMultiplexer> _redis = new(MockBehavior.Strict);
     private readonly Mock<IDatabase> _db = new(MockBehavior.Strict);
     private readonly Mock<IServer> _server = new(MockBehavior.Strict);
     private readonly Mock<ILogger<RedisFoodCacheService>> _logger = new();
+
+    private readonly IMeterFactory _fabrique =
+        new ServiceCollection().AddMetrics().BuildServiceProvider().GetRequiredService<IMeterFactory>();
 
     private static readonly List<FoodItemSearchResponse> Poulet =
     [
@@ -34,8 +42,13 @@ public class RedisFoodCacheServiceTest
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
-        return new RedisFoodCacheService(_redis.Object, configuration, _logger.Object);
+        return new RedisFoodCacheService(
+            _redis.Object, configuration, _logger.Object, new InfrastructureMetrics(_fabrique));
     }
+
+    /// <summary>Branche un collecteur sur le compteur des recherches présentées au cache.</summary>
+    private MetricCollector<long> ObserverLesRecherches()
+        => new(_fabrique, InfrastructureMetrics.MeterName, InstrumentDesRecherches);
 
     /// <summary>Branche le multiplexeur sur la base mockée — commun à toutes les commandes de données.</summary>
     private void GivenDatabase()
@@ -83,6 +96,51 @@ public class RedisFoodCacheServiceTest
         await CreateService().GetAsync("  Poulet  ");
 
         _db.Verify(d => d.StringGetAsync((RedisKey)PouletKey, It.IsAny<CommandFlags>()), Times.Once);
+    }
+
+    // ---------------------------------------------------------------------
+    // Mesure du cache (NTR-138)
+    // ---------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAsync_WhenCached_CountsAHit()
+    {
+        GivenDatabase();
+        _db.Setup(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+           .ReturnsAsync(JsonSerializer.Serialize(Poulet));
+        var releves = ObserverLesRecherches();
+
+        await CreateService().GetAsync("poulet");
+
+        Assert.Equal("hit", Assert.Single(releves.GetMeasurementSnapshot()).Tags["outcome"]);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenAbsent_CountsAMiss()
+    {
+        GivenDatabase();
+        _db.Setup(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+           .ReturnsAsync(RedisValue.Null);
+        var releves = ObserverLesRecherches();
+
+        await CreateService().GetAsync("poulet");
+
+        Assert.Equal("miss", Assert.Single(releves.GetMeasurementSnapshot()).Tags["outcome"]);
+    }
+
+    [Fact]
+    public async Task GetAsync_WhenRedisIsDown_CountsAFailureAndNotAMiss()
+    {
+        GivenDatabase();
+        _db.Setup(d => d.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+           .ThrowsAsync(RedisDown());
+        var releves = ObserverLesRecherches();
+
+        await CreateService().GetAsync("poulet");
+
+        // L'appelant reçoit null dans les deux cas et repart en base. Les confondre ferait passer
+        // un cache injoignable pour un cache qui ne sert jamais — deux pannes très différentes.
+        Assert.Equal("failure", Assert.Single(releves.GetMeasurementSnapshot()).Tags["outcome"]);
     }
 
     [Fact]

@@ -13,6 +13,7 @@ using NutritionApi.Infrastructure.Caching;
 using NutritionApi.Infrastructure.ExternalServices.Keycloak;
 using NutritionApi.Infrastructure.Jobs.OffImport;
 using NutritionApi.Infrastructure.Jobs.RgpdPurge;
+using NutritionApi.Infrastructure.Observability;
 using NutritionApi.Infrastructure.Scheduling;
 using NutritionApi.Infrastructure.Persistence;
 using NutritionApi.Infrastructure.Persistence.Interceptors;
@@ -69,13 +70,24 @@ public static class InfrastructureExtensions
 
         services.AddScoped<IFoodCacheService, RedisFoodCacheService>();
 
+        // ── Métriques de la couche ────────────────────────────────────────────
+        // Taux de succès du cache et issue des jobs (NTR-138) : deux mesures qu'aucune bibliothèque
+        // ne produit, parce qu'elles naissent d'une décision prise ici. Singleton — les instruments
+        // vivent aussi longtemps que le processus, et le filtre Hangfire ci-dessous en dépend.
+        services.AddSingleton<InfrastructureMetrics>();
+        services.AddSingleton<JobMetricsFilter>();
+
         // ── Hangfire ──────────────────────────────────────────────────────────
         // Jobs planifiés persistés dans PostgreSQL (schéma dédié, tables créées au
         // démarrage). Le serveur d'exécution tourne dans le process de l'API.
-        services.AddHangfire(config => config
+        //
+        // La surcharge qui reçoit le fournisseur de services est nécessaire au filtre de mesure :
+        // celui-ci a une dépendance, ce qu'une configuration statique ne saurait pas résoudre.
+        services.AddHangfire((provider, config) => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
             .UseSimpleAssemblyNameTypeSerializer()
             .UseRecommendedSerializerSettings()
+            .UseFilter(provider.GetRequiredService<JobMetricsFilter>())
             .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
 
         // Lance la boucle de fond dans l'API.
