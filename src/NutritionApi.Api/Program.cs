@@ -52,6 +52,11 @@ builder.Services.AddApplication();
 // DbContext EF Core (PostgreSQL, snake_case), IUnitOfWork et repositories
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// ── Observabilité ──────────────────────────────────────────────────────────────
+// Socle OpenTelemetry (NTR-140) : s'abonne aux mesures qu'ASP.NET Core, HttpClient, Npgsql et
+// Redis émettent déjà. Après AddInfrastructure, dont l'instrumentation Redis attend le multiplexeur.
+builder.Services.AddObservability(builder.Configuration, builder.Environment);
+
 builder.Services.AddControllers();
 
 // ── Authentification ───────────────────────────────────────────────────────────
