@@ -44,7 +44,7 @@ jobs:
           path: coverage/report
 
       - name: Commentaire couverture sur PR
-        uses: 5monkeys/cobertura-action@master
+        uses: 5monkeys/cobertura-action@v14
         if: github.event_name == 'pull_request'
         with:
           path: coverage/report/Cobertura.xml

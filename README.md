@@ -1,8 +1,7 @@
 # nutrition-api
 
-[![CI — Tests unitaires](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-unit.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-unit.yml)
+[![CI — Pull request](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml)
 [![CI — Release](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml)
-[![CI — Tests d'intégration externe](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-integration.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-integration.yml)
 [![Coverage](https://img.shields.io/badge/coverage-à_configurer-lightgrey)](#tests-automatisés)
 [![Quality Gate](https://img.shields.io/badge/SonarCloud-à_configurer-lightgrey)](https://sonarcloud.io)
 [![Dependabot](https://img.shields.io/badge/Dependabot-à_configurer-lightgrey)](https://github.com/MGNetworking/nutrition-api/network/updates)
@@ -333,10 +332,8 @@ plusieurs dizaines de secondes là où les tests unitaires se comptent en millis
 
 **Seuils de couverture par couche**
 
-Déclarés dans `tests/coverage.runsettings`, en ligne **et** en branche. Le workflow
-`.github/workflows/ci-unit.yml` lance `dotnet test` avec ce fichier de réglages : les seuils sont
-donc contrôlés à chaque pull request vers `dev`. Ce workflow exclut le niveau 3 (`--filter
-"Level!=3"`), exécuté séparément par `ci-integration.yml`.
+Déclarés dans `tests/coverage.runsettings`, en ligne **et** en branche. C'est la source unique :
+aucun seuil n'est écrit ailleurs, ni dans un workflow, ni dans ce fichier.
 
 | Couche | Seuil |
 |---|---|
@@ -348,8 +345,27 @@ donc contrôlés à chaque pull request vers `dev`. Ce workflow exclut le niveau
 Sont exclus du calcul : les DTOs, `Program.cs`, `DependencyInjection.cs`, les projets de tests et
 tout membre marqué `[ExcludeFromCodeCoverage]`.
 
-> Le badge **Coverage** en tête de ce fichier concerne l'affichage public du taux (Codecov ou
-> équivalent), qui reste à brancher — voir NTR-120. Le contrôle des seuils, lui, est bien actif.
+Le contrôle est assuré par `scripts/check-coverage.sh`, qui lit ces seuils et les compare au
+rapport **fusionné** — niveaux 1, 2 et 3 réunis. Le job `coverage` de `ci-pr.yml` l'exécute à
+chaque pull request vers `dev`, et c'est lui, et lui seul, qui fait échouer la CI sur la
+couverture. Le script s'utilise aussi en local :
+
+```bash
+./scripts/check-coverage.sh coverage/report/Cobertura.xml
+```
+
+> **Pourquoi la fusion importe.** Mesurer une couche sur une partie seulement de ses tests donne
+> un chiffre faux : Infrastructure tombe à 7,9 % quand on écarte le niveau 3, puisque ce sont ces
+> tests-là qui traversent les dépôts EF Core et le cache Redis.
+
+> **Corrigé le 2026-08-02 (NTR-132).** Cette section affirmait auparavant que les seuils étaient
+> contrôlés à chaque pull request. Ils ne l'étaient pas : `coverlet.collector` ne lit pas le bloc
+> `<Thresholds>` d'un runsettings — seule l'intégration MSBuild de Coverlet gère les seuils — et
+> l'action de commentaire de PR laisse `fail_below_threshold` à `false` par défaut. Aucune barrière
+> n'existait.
+
+> Le badge **Coverage** en tête de ce fichier concerne l'affichage public du taux, qui reste à
+> brancher — voir NTR-120.
 
 ---
 

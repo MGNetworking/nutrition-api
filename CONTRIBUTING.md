@@ -36,9 +36,8 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 
 | PR | Workflow | Ce qui s'exécute |
 |----|----------|-----------------|
-| `feature/* → dev` | `ci-unit.yml` | Build + tests de niveaux 1 et 2 (`--filter "Level!=3"`) |
-| `feature/* → dev` | `ci-integration.yml` | Pile docker-compose + tests de niveau 3 (`--filter "Level=3"`) |
-| `main → dev` (sync) | `ci-unit.yml`, `ci-integration.yml` | **ignoré** (`github.head_ref != 'main'`) |
+| `feature/* → dev` | `ci-pr.yml` | Trois jobs : niveaux 1 et 2, niveau 3 sur docker-compose, puis couverture fusionnée et contrôle des seuils |
+| `main → dev` (sync) | `ci-pr.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → prod` | `ci-deploy.yml` | Build Release + déploiement VPS |
 | `main → prod` (sync) | `ci-deploy.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → main` | `ci-release.yml` | Build + tests unitaires + couverture + rapport PR |
@@ -46,10 +45,17 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 
 > Les PRs de synchronisation `main → dev` et `main → prod` ne déclenchent pas le CI — le code vient de `main` qui est déjà testé. Les PRs automatiques de Release Please sont également ignorées pour éviter les boucles.
 
-> `ci-unit.yml` et `ci-integration.yml` tournent **en parallèle** sur une PR vers `dev`, et leurs
+> Dans `ci-pr.yml`, les jobs `unit-tests` et `integration-tests` tournent **en parallèle**, et leurs
 > périmètres sont disjoints : les filtres `Level!=3` et `Level=3` garantissent qu'aucun test n'est
-> joué deux fois ni oublié. `ci-integration.yml` appelle `./scripts/test-integration.sh`, le même
-> script qu'en local — la CI ne déclare aucun service qui lui soit propre.
+> joué deux fois ni oublié — donc que la fusion de leurs deux rapports ne double compte rien. Le
+> second appelle `./scripts/test-integration.sh`, le même script qu'en local : la CI ne déclare
+> aucun service qui lui soit propre.
+>
+> Le job `coverage` attend les deux, fusionne les rapports et exécute `./scripts/check-coverage.sh`.
+> C'est ce contrôle qui fait échouer la PR sur la couverture ; les seuils sont déclarés dans
+> `tests/coverage.runsettings`, seule source. Les deux workflows précédents, `ci-unit.yml` et
+> `ci-integration.yml`, ont été réunis pour cette raison (NTR-168) : deux workflows distincts sur
+> le même événement ne peuvent pas s'attendre, et aucun ne pouvait donc produire un chiffre unique.
 
 ### Smoke tests
 
