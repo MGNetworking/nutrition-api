@@ -53,6 +53,10 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
         {
             DockerContainer.Start(DockerContainer.Keycloak);
             await DockerContainer.WaitHealthyAsync(DockerContainer.Keycloak, TimeSpan.FromSeconds(240));
+
+            // Le conteneur sain ne suffit pas : l'hôte partagé peut être resté sans clés pendant la
+            // coupure, et le test suivant récolterait un 401 sans rapport avec ce qu'il vérifie.
+            await factory.WaitUntilReadyAsync();
         }
     }
 
@@ -105,6 +109,10 @@ public sealed class KeycloakOutageTest(IntegrationFactory factory)
         {
             DockerContainer.Start(DockerContainer.Keycloak);
             await DockerContainer.WaitHealthyAsync(DockerContainer.Keycloak, TimeSpan.FromSeconds(240));
+
+            // Le conteneur sain ne suffit pas : l'hôte partagé peut être resté sans clés pendant la
+            // coupure, et le test suivant récolterait un 401 sans rapport avec ce qu'il vérifie.
+            await factory.WaitUntilReadyAsync();
         }
     }
 

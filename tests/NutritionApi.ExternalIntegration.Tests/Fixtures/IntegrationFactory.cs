@@ -165,11 +165,67 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
     /// </remarks>
     public static IntegrationFactory AvecPrechargementCourt(int secondes) => new(secondes);
 
+    /// <summary>
+    /// Attend que l'application se déclare en état de servir, en interrogeant <c>/health/ready</c>.
+    /// </summary>
+    /// <param name="timeout">Délai au-delà duquel le test échoue avec un message explicite.</param>
+    /// <exception cref="InvalidOperationException">L'aptitude n'est pas revenue à temps.</exception>
+    /// <remarks>
+    /// <b>Pourquoi cette attente est devenue nécessaire (2026-08-02, NTR-173).</b> Jusque-là,
+    /// <c>KeycloakAvailabilityService</c> interrompait le démarrage tant que les clés du realm
+    /// n'étaient pas récupérées : tout hôte qui existait avait donc forcément ses clés. Ce n'est plus
+    /// le cas — un hôte démarre désormais sans clés et les récupère paresseusement, en se déclarant
+    /// non prêt entre-temps.
+    /// <para>
+    /// En production, l'orchestrateur lit cette aptitude et n'envoie aucun trafic avant qu'elle soit
+    /// positive. <b>La suite de tests, elle, n'a pas de sas de mise en service</b> : elle appelle
+    /// l'API directement. Un test authentifié qui suit une coupure du serveur d'identité tapait donc
+    /// sur un hôte encore dépourvu de clés, et récoltait un 401 sans rapport avec ce qu'il vérifiait.
+    /// </para>
+    /// <para>
+    /// L'interrogation ne fait pas qu'attendre : la sonde des clés appelle elle-même le gestionnaire
+    /// de configuration OIDC, donc chaque sondage relance la tentative de récupération.
+    /// </para>
+    /// </remarks>
+    public async Task WaitUntilReadyAsync(TimeSpan? timeout = null)
+    {
+        var delai = timeout ?? TimeSpan.FromSeconds(60);
+        var echeance = DateTime.UtcNow + delai;
+
+        using var client = CreateClient();
+
+        string dernierCorps = "aucune réponse";
+
+        while (DateTime.UtcNow < echeance)
+        {
+            var reponse = await client.GetAsync("/health/ready");
+
+            if (reponse.IsSuccessStatusCode)
+                return;
+
+            dernierCorps = await reponse.Content.ReadAsStringAsync();
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        throw new InvalidOperationException(
+            $"L'application ne s'est pas déclarée prête en {delai.TotalSeconds:0} s. "
+            + $"Dernier rapport de /health/ready : {dernierCorps}");
+    }
+
     /// <summary>Crée un client portant un jeton réellement émis par Keycloak.</summary>
     /// <param name="username">Compte du realm — <see cref="KeycloakTokens.StandardUser"/> par défaut.</param>
     /// <returns>Un client HTTP dont les requêtes traversent la validation JWT complète.</returns>
+    /// <remarks>
+    /// L'attente d'aptitude est faite ici, et non dans chaque test : n'importe lequel d'entre eux
+    /// peut être le premier appel authentifié après une coupure, et l'ordre d'exécution de xUnit
+    /// n'est pas garanti. La placer au seul endroit qui fabrique un client authentifié couvre les six
+    /// fichiers concernés sans qu'aucun n'ait à y penser.
+    /// </remarks>
     public async Task<HttpClient> CreateTokenClientAsync(string? username = null)
     {
+        await WaitUntilReadyAsync();
+
         var token = await Tokens.GetAccessTokenAsync(username ?? KeycloakTokens.StandardUser);
 
         var client = CreateClient();
