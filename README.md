@@ -318,26 +318,44 @@ métier.
 
 ### Commandes
 
+**La voie normale** — un seul point d'entrée, qui rejoue exactement ce que fait `ci-pr.yml` :
+
 ```bash
-# Tous les tests
-dotnet test
-
-# Uniquement les tests d'intégration (niveau 2)
-dotnet test --filter "FullyQualifiedName~Integration"
-
-# Tout sauf eux — utile pour garder une boucle rapide
-dotnet test --filter "FullyQualifiedName!~Integration"
-
-# Avec couverture de code
-dotnet test --settings tests/coverage.runsettings --collect:"XPlat Code Coverage" --results-directory ./coverage
-
-# Rapport HTML (outil à installer une seule fois)
-dotnet tool install -g dotnet-reportgenerator-globaltool
-reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" \
-  -reporttypes:Html -classfilters:"-NutritionApi.Application.DTOS.*"
+./scripts/test-all.sh                   # les trois niveaux, couverture fusionnée, seuils
+./scripts/test-all.sh --no-integration  # niveaux 1 et 2 seulement, boucle rapide
+./scripts/test-all.sh --no-build        # réutilise la compilation existante
 ```
 
-Le rapport est généré dans `coverage/report/index.html`.
+Reproduire cet enchaînement à la main demande six commandes et deux chemins de rapports à ne pas
+confondre. Une divergence entre ce qu'on lance chez soi et ce que lance la CI se paie en
+allers-retours sur une pull request.
+
+Les sorties atterrissent là où le SDK les écrit, donc là où un IDE va les chercher :
+
+| Fichier | Contenu |
+|---|---|
+| `tests/<Projet>/TestResults/*.trx` | résultats détaillés, ouvrables dans Visual Studio ou Rider |
+| `tests/<Projet>/TestResults/<guid>/coverage.*.xml` | couverture brute, Cobertura et OpenCover |
+| `coverage/report/index.html` | rapport fusionné des trois niveaux, lisible dans un navigateur |
+
+> **Le script compile tout en Release**, y compris le niveau 3. Ce n'est pas un détail : mesurer une
+> moitié en Debug et l'autre en Release produit un rapport fusionné qui ne décrit aucun binaire réel,
+> et qui passe pourtant le contrôle des seuils. Un faux positif de la barrière censée les empêcher.
+
+**Commandes directes**, quand on vise un point précis :
+
+```bash
+# Un seul niveau
+dotnet test --filter "Level!=3"     # niveaux 1 et 2
+dotnet test --filter "Level=3"      # niveau 3 — exige la pile docker-compose
+
+# Un seul projet, ou une seule classe
+dotnet test tests/NutritionApi.Domain.Tests
+dotnet test --filter "FullyQualifiedName~KeycloakOutageTest"
+
+# Contrôler les seuils sur un rapport déjà produit
+./scripts/check-coverage.sh coverage/report/Cobertura.xml
+```
 
 **Comment les niveaux se sélectionnent**
 

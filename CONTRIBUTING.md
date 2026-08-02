@@ -126,7 +126,24 @@ Monte la pile **avec l'API dans un conteneur**, sur le port 5100 et la configura
 production ; le développement quotidien passe par `dev-up.sh` et `dotnet run`, qui laissent le
 débogueur attaché.
 
-### Lancer les tests de niveau 3
+### Lancer les tests
+
+**Avant d'ouvrir une pull request**, un seul point d'entrée, qui rejoue ce que fait `ci-pr.yml` :
+
+```bash
+./scripts/test-all.sh                   # les trois niveaux, couverture fusionnée, contrôle des seuils
+./scripts/test-all.sh --no-integration  # niveaux 1 et 2 seulement, boucle rapide
+```
+
+Il produit les `.trx` dans `tests/<Projet>/TestResults/` et le rapport fusionné dans
+`coverage/report/index.html`. Obtenir le même verdict que la CI **avant** de pousser évite de
+découvrir un échec sur la pull request.
+
+Il compile tout en Release, niveau 3 compris. Mesurer une moitié en Debug et l'autre en Release
+produit un rapport fusionné qui ne décrit aucun binaire réel, et qui passe pourtant le contrôle des
+seuils.
+
+### Le niveau 3 seul
 
 ```bash
 ./scripts/test-integration.sh              # monte la pile puis exécute les tests Level=3

@@ -40,15 +40,21 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
     /// Délai au-delà duquel la sonde renonce. Une sonde qui pend est pire qu'une sonde qui échoue :
     /// l'orchestrateur attendrait son propre délai d'expiration sans rien apprendre.
     /// </summary>
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan DelaiParDefaut = TimeSpan.FromSeconds(5);
 
     private readonly IOptionsMonitor<JwtBearerOptions> _jwtOptions;
+    private readonly TimeSpan _delai;
 
     /// <summary>Construit la sonde.</summary>
     /// <param name="jwtOptions">Options du schéma JWT — portent le gestionnaire de configuration OIDC.</param>
-    public SigningKeysHealthCheck(IOptionsMonitor<JwtBearerOptions> jwtOptions)
+    /// <param name="delai">
+    /// Délai avant renoncement. Laissé vide en production ; un test qui éprouve cette branche en
+    /// passe un court, faute de quoi chaque exécution attendrait cinq secondes pour rien.
+    /// </param>
+    public SigningKeysHealthCheck(IOptionsMonitor<JwtBearerOptions> jwtOptions, TimeSpan? delai = null)
     {
         _jwtOptions = jwtOptions;
+        _delai = delai ?? DelaiParDefaut;
     }
 
     /// <inheritdoc />
@@ -65,7 +71,7 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
         }
 
         using var limite = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        limite.CancelAfter(Timeout);
+        limite.CancelAfter(_delai);
 
         try
         {
@@ -84,7 +90,7 @@ public sealed class SigningKeysHealthCheck : IHealthCheck
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             return HealthCheckResult.Unhealthy(
-                $"Les clés de signature n'ont pas pu être obtenues en {Timeout.TotalSeconds:0} s "
+                $"Les clés de signature n'ont pas pu être obtenues en {_delai.TotalSeconds:0} s "
                 + $"depuis « {options.Authority} ».");
         }
         catch (Exception exception)

@@ -32,15 +32,21 @@ public sealed class RedisHealthCheck : IHealthCheck
     public const string Name = "redis";
 
     /// <summary>Délai au-delà duquel la sonde renonce et déclare le cache dégradé.</summary>
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(3);
+    public static readonly TimeSpan DelaiParDefaut = TimeSpan.FromSeconds(3);
 
     private readonly IConnectionMultiplexer _redis;
+    private readonly TimeSpan _delai;
 
     /// <summary>Construit la sonde.</summary>
     /// <param name="redis">Multiplexeur partagé, enregistré en singleton par la couche Infrastructure.</param>
-    public RedisHealthCheck(IConnectionMultiplexer redis)
+    /// <param name="delai">
+    /// Délai avant renoncement. Laissé vide en production ; un test qui éprouve cette branche en
+    /// passe un court, faute de quoi chaque exécution attendrait trois secondes pour rien.
+    /// </param>
+    public RedisHealthCheck(IConnectionMultiplexer redis, TimeSpan? delai = null)
     {
         _redis = redis;
+        _delai = delai ?? DelaiParDefaut;
     }
 
     /// <inheritdoc />
@@ -55,7 +61,7 @@ public sealed class RedisHealthCheck : IHealthCheck
         }
 
         using var limite = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        limite.CancelAfter(Timeout);
+        limite.CancelAfter(_delai);
 
         try
         {
@@ -66,7 +72,7 @@ public sealed class RedisHealthCheck : IHealthCheck
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             return HealthCheckResult.Degraded(
-                $"Cache Redis sans réponse en {Timeout.TotalSeconds:0} s — repli sur PostgreSQL.");
+                $"Cache Redis sans réponse en {_delai.TotalSeconds:0} s — repli sur PostgreSQL.");
         }
         catch (Exception exception)
         {
