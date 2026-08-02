@@ -69,7 +69,14 @@ Le palier 3 s'authentifie avec un **compte d'exploitation** dédié : un client 
 account, et sa ligne `User` en base. Sans cette ligne, `UserResolutionMiddleware` renvoie 401 —
 indiscernable d'un rejet de jeton, ce qui priverait le smoke test de tout pouvoir de diagnostic.
 
-> Aucun palier n'est implémenté : `Program.cs` ne déclare aucun health check.
+> **Paliers 1 et 2 : les points de terminaison existent** depuis le 2026-08-02 (NTR-88). `/health`
+> répond sans consulter aucune dépendance ; `/health/ready` consulte PostgreSQL et les clés de
+> signature, signale Redis sans en faire dépendre son verdict. Les deux sont anonymes et détaillent
+> chaque dépendance dans leur corps de réponse — ce qui donne au smoke test le pouvoir de désigner la
+> brique en cause.
+>
+> Les smoke tests eux-mêmes restent à écrire : ils s'exécutent après un déploiement, qui n'existe pas
+> encore.
 
 ---
 

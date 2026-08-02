@@ -236,6 +236,44 @@ curl -X POST "http://localhost:8778/realms/nutrition/protocol/openid-connect/tok
   -d "username=test-user" -d "password=test"
 ```
 
+### Sondes de santé
+
+Deux points de terminaison anonymes, qui répondent à deux questions distinctes.
+
+| Chemin | Question | Consulte | Réponses |
+|---|---|---|---|
+| `/health` | suis-je vivant ? | **rien** | 200 tant que le processus répond |
+| `/health/ready` | suis-je en état de servir ? | PostgreSQL, clés de signature, Redis | 200 ou 503 |
+
+```bash
+curl -s http://localhost:5099/health/ready | jq
+```
+
+Le corps détaille chaque dépendance, son statut et sa durée — un 503 dit lequel des trois manque,
+là où un code seul laisserait chercher.
+
+**Ce qui pèse dans le verdict d'aptitude**
+
+| Dépendance | Poids | Pourquoi |
+|---|---|---|
+| PostgreSQL | bloquante | sans base, l'application ne sait rien répondre |
+| Clés de signature | bloquante | sans elles, tous les jetons seraient refusés |
+| Redis | signalée, non bloquante | le cache est un accélérateur : son absence dégrade, elle ne rend pas inapte |
+
+> **La sonde des clés demande « ai-je des clés ? », pas « Keycloak répond-il ? »** La validation des
+> jetons est locale, à partir des clés publiques mises en cache : une instance qui les a obtenues
+> continue de servir pendant une coupure du serveur d'identité. Sonder sa joignabilité aurait retiré
+> du service une flotte entière — toutes ses instances répondant correctement — le jour d'un
+> redémarrage de Keycloak.
+
+> **`/health` ne consulte volontairement aucune dépendance.** C'est cette sonde qu'un orchestrateur
+> branche sur la vivacité. Si elle échouait faute de dépendance, le conteneur serait tué au lieu
+> d'attendre — et une instance démarrée avant son serveur d'identité entrerait dans une boucle de
+> redémarrage au lieu de patienter hors du service, puis de le rejoindre d'elle-même.
+
+Les quatre comportements ci-dessus sont éprouvés au niveau 3 par `Startup/HealthProbeTest.cs`, qui
+coupe réellement Keycloak et Redis.
+
 ---
 
 ## Tests automatisés
