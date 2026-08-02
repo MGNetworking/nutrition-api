@@ -36,7 +36,7 @@ Les tests sont différenciés selon la transition pour éviter de rejouer inutil
 
 | PR | Workflow | Ce qui s'exécute |
 |----|----------|-----------------|
-| `feature/* → dev` | `ci-unit.yml` | Build + tests de niveaux 1 et 2 (`--filter "Level!=3"`) |
+| `feature/* → dev` | `ci-unit.yml` | Build + tests de niveaux 1 et 2 (`--filter "Level!=3"`) + couverture + rapport PR |
 | `feature/* → dev` | `ci-integration.yml` | Pile docker-compose + tests de niveau 3 (`--filter "Level=3"`) |
 | `main → dev` (sync) | `ci-unit.yml`, `ci-integration.yml` | **ignoré** (`github.head_ref != 'main'`) |
 | `dev → prod` | `ci-deploy.yml` | Build Release + déploiement VPS |
