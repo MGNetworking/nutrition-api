@@ -1,4 +1,4 @@
-name: CI — Pull request vers dev
+name: CI — Intégration continue
 
 # Réunit ce qui était réparti entre ci-unit.yml et ci-integration.yml (NTR-168).
 #
@@ -11,8 +11,19 @@ name: CI — Pull request vers dev
 # Trois jobs, dont le dernier dépend des deux premiers : c'est la seule façon d'obtenir un
 # chiffre unique, et c'est aussi ce dont SonarCloud aura besoin (NTR-169).
 
+# Deux déclencheurs, pour deux besoins distincts (NTR-169) :
+#
+#   pull_request  éprouver une proposition avant de l'intégrer, et décider si elle passe
+#   push          mesurer l'état de dev une fois la fusion faite
+#
+# Le second existe parce qu'une analyse de pull request est attachée à la pull request : elle
+# disparaît avec elle. Les badges du README, eux, lisent la branche principale déclarée dans
+# SonarQube — nommée `dev`. Sans analyse de branche, ils affichent « Measure has not been found »
+# sur un projet dont la couverture dépasse 90 %.
 on:
   pull_request:
+    branches: [dev]
+  push:
     branches: [dev]
 
 jobs:
@@ -138,7 +149,11 @@ jobs:
 
       # Le commentaire est publié avant le contrôle : quand un seuil casse, on veut voir les
       # chiffres sur la pull request, pas seulement un job rouge.
+      #
+      # Réservé aux pull requests : sur un push, il n'y a rien à commenter, et l'action échouerait
+      # faute de trouver le numéro de la pull request.
       - name: Commentaire couverture sur PR
+        if: github.event_name == 'pull_request'
         uses: 5monkeys/cobertura-action@ee5787cc56634acddedc51f21c7947985531e6eb # v14
         with:
           path: coverage/report/Cobertura.xml

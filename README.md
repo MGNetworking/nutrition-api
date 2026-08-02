@@ -1,6 +1,6 @@
 # nutrition-api
 
-[![CI — Pull request](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml)
+[![CI — Intégration continue](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-pr.yml)
 [![CI — Release](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml/badge.svg)](https://github.com/MGNetworking/nutrition-api/actions/workflows/ci-release.yml)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=MGNetworking_nutrition-api&metric=coverage)](https://sonarcloud.io/summary/new_code?id=MGNetworking_nutrition-api)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=MGNetworking_nutrition-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=MGNetworking_nutrition-api)
@@ -424,8 +424,9 @@ couverture. Le script s'utilise aussi en local :
 > l'action de commentaire de PR laisse `fail_below_threshold` à `false` par défaut. Aucune barrière
 > n'existait.
 
-> Le badge **Coverage** en tête de ce fichier concerne l'affichage public du taux, qui reste à
-> brancher — voir NTR-120.
+> **Deux mesures, deux rôles.** Le contrôle ci-dessus décide si une pull request passe, couche par
+> couche. Le badge **Coverage** en tête de ce fichier affiche le taux courant de la branche
+> d'intégration, tel que SonarQube le mesure. Le premier bloque, le second informe.
 
 ---
 
