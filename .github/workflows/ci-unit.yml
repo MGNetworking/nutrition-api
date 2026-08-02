@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
+      checks: write
 
     steps:
       - uses: actions/checkout@v4
@@ -29,4 +30,27 @@ jobs:
       # Le filtre écarte le niveau 3, qui exige PostgreSQL, Redis et Keycloak réels.
       # Ces tests sont exécutés par ci-integration.yml, qui monte la pile docker-compose.
       - name: Tests unitaires et d'intégration interne
-        run: dotnet test nutrition-api.slnx --no-build --configuration Release --verbosity normal --settings tests/coverage.runsettings --filter "Level!=3"
+        run: dotnet test nutrition-api.slnx --no-build --configuration Release --verbosity normal --settings tests/coverage.runsettings --filter "Level!=3" --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+      # La couverture était jusqu'ici calculée par ci-release.yml seul, donc sur les pull
+      # requests vers main. Une baisse n'apparaissait qu'au moment de préparer une release,
+      # alors que le code fautif était dans dev depuis plusieurs jours (NTR-166).
+      - name: Générer rapport de couverture
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Cobertura
+
+      - name: Upload rapport de couverture
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-unit
+          path: coverage/report
+
+      - name: Commentaire couverture sur PR
+        uses: 5monkeys/cobertura-action@v14
+        with:
+          path: coverage/report/Cobertura.xml
+          minimum_coverage: 75
+          show_line: true
+          show_branch: true
+          report_name: Couverture — niveaux 1 et 2
