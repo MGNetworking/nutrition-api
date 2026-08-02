@@ -1,0 +1,141 @@
+name: CI — Pull request vers dev
+
+# Réunit ce qui était réparti entre ci-unit.yml et ci-integration.yml (NTR-168).
+#
+# Les deux fichiers précédents étaient deux workflows distincts sur le même événement :
+# aucun des deux ne pouvait attendre l'artefact de l'autre. Chacun mesurait donc une part
+# du code sans jamais voir l'autre, et la couverture publiée décrivait les seuls niveaux
+# 1 et 2. Infrastructure y apparaissait à 7,9 %, non par manque de tests mais parce que
+# ceux qui la traversent — dépôts EF Core, cache Redis — sont de niveau 3.
+#
+# Trois jobs, dont le dernier dépend des deux premiers : c'est la seule façon d'obtenir un
+# chiffre unique, et c'est aussi ce dont SonarCloud aura besoin (NTR-169).
+
+on:
+  pull_request:
+    branches: [dev]
+
+jobs:
+  unit-tests:
+    name: Tests unitaires et d'intégration interne
+    if: github.head_ref != 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore nutrition-api.slnx
+
+      - name: Build
+        run: dotnet build nutrition-api.slnx --no-restore --configuration Release
+
+      # Le filtre écarte le niveau 3, exécuté par le job voisin. Les deux périmètres sont
+      # disjoints : Level!=3 et Level=3 garantissent qu'aucun test n'est joué deux fois ni
+      # oublié, et que la fusion des deux rapports ne double compte rien.
+      - name: Tests de niveaux 1 et 2
+        run: dotnet test nutrition-api.slnx --no-build --configuration Release --verbosity normal --settings tests/coverage.runsettings --filter "Level!=3" --collect:"XPlat Code Coverage" --results-directory ./coverage-unit
+
+      - name: Upload couverture brute (niveaux 1 et 2)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-raw-unit
+          path: coverage-unit
+          retention-days: 1
+
+  integration-tests:
+    name: Tests d'intégration externe (docker-compose)
+    if: github.head_ref != 'main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore nutrition-api.slnx
+
+      - name: Build
+        run: dotnet build nutrition-api.slnx --no-restore --configuration Release
+
+      # Le job réutilise scripts/test-integration.sh — le même script qu'en local, qui monte le
+      # même docker-compose.yml. Aucune définition de service propre à la CI : ce que le workflow
+      # éprouve est donc bien la configuration Docker du projet, ce qui est l'objet de ce niveau.
+      #
+      # Les services ne sont volontairement pas déclarés via `services:` : les conteneurs de
+      # GitHub Actions ne rejoueraient ni les healthchecks, ni le réseau, ni l'import de realm
+      # du compose.
+      - name: Tests de niveau 3
+        run: ./scripts/test-integration.sh --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage-integration
+
+      # Les journaux des trois services sont la première chose à lire quand un test échoue :
+      # un realm mal importé ou une base non migrée ne se voit pas dans la sortie de dotnet test.
+      - name: Journaux des services en cas d'échec
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Arrêt de la pile
+        if: always()
+        run: docker compose down -v
+
+      - name: Upload couverture brute (niveau 3)
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-raw-integration
+          path: coverage-integration
+          retention-days: 1
+
+  coverage:
+    name: Couverture fusionnée et seuils
+    if: github.head_ref != 'main'
+    needs: [unit-tests, integration-tests]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      checks: write
+
+    steps:
+      # Le dépôt est nécessaire : le contrôle lit les seuils dans tests/coverage.runsettings.
+      - uses: actions/checkout@v4
+
+      - name: Récupérer les couvertures brutes
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-raw-*
+          merge-multiple: true
+          path: coverage
+
+      - name: Fusionner les rapports
+        run: |
+          dotnet tool install -g dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"coverage/**/coverage.cobertura.xml" -targetdir:"coverage/report" -reporttypes:Cobertura
+
+      - name: Upload rapport de couverture
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/report
+
+      # Le commentaire est publié avant le contrôle : quand un seuil casse, on veut voir les
+      # chiffres sur la pull request, pas seulement un job rouge.
+      - name: Commentaire couverture sur PR
+        uses: 5monkeys/cobertura-action@v14
+        with:
+          path: coverage/report/Cobertura.xml
+          minimum_coverage: 75
+          show_line: true
+          show_branch: true
+
+      # C'est ce contrôle qui fait échouer la pull request, et lui seul. Les seuils vivent
+      # dans tests/coverage.runsettings : une seule source, celle que documente le README.
+      - name: Contrôle des seuils par couche
+        run: ./scripts/check-coverage.sh coverage/report/Cobertura.xml
