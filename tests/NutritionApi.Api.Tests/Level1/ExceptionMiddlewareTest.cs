@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using NutritionApi.Api.Middleware;
 using NutritionApi.Application.Exceptions;
+using System.Diagnostics;
 
 [Trait("Level", "1")]
 public class ExceptionMiddlewareTest
@@ -179,7 +180,7 @@ public class ExceptionMiddlewareTest
     // ── NTR-135 — contenu du ProblemDetails ───────────────────────────────────
 
     [Fact]
-    public async Task InvokeAsync_ProblemDetails_CarriesTraceIdentifier()
+    public async Task InvokeAsync_WhenNoTraceIsUnderway_FallsBackToTheKestrelIdentifier()
     {
         var context = CreateContext();
         context.TraceIdentifier = "trace-de-test";
@@ -187,9 +188,29 @@ public class ExceptionMiddlewareTest
 
         await _middleware.InvokeAsync(context, next);
 
-        // C'est ce qui permet de relier le signalement d'un utilisateur à l'entrée de journal,
-        // sans avoir à rendre les messages plus bavards.
+        // Observabilité désactivée : mieux vaut un identifiant qui ne mène qu'aux journaux que pas
+        // d'identifiant du tout.
         Assert.Contains("trace-de-test", await ReadBody(context));
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ProblemDetails_CarriesTheTraceIdAndNotTheKestrelIdentifier()
+    {
+        var context = CreateContext();
+        context.TraceIdentifier = "identifiant-kestrel";
+        RequestDelegate next = _ => throw new NotFoundException("introuvable");
+
+        using var activite = new Activity("requete-de-test").Start();
+
+        await _middleware.InvokeAsync(context, next);
+
+        var corps = await ReadBody(context);
+
+        // Le point de jonction du volet 3 : c'est cet identifiant, et lui seul, qui figure dans les
+        // traces envoyées au collecteur. L'identifiant Kestrel est propre à la connexion et
+        // n'apparaît dans aucune trace — le publier menait l'utilisateur nulle part (NTR-139).
+        Assert.Contains(activite.TraceId.ToString(), corps);
+        Assert.DoesNotContain("identifiant-kestrel", corps);
     }
 
     [Fact]

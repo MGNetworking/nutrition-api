@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using NutritionApi.Application.Exceptions;
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 
 namespace NutritionApi.Api.Middleware
@@ -40,6 +41,26 @@ namespace NutritionApi.Api.Middleware
             _   => "https://tools.ietf.org/html/rfc9110#section-15.6.1"
         };
 
+        /// <summary>
+        /// Retourne l'identifiant publié au client. C'est l'identifiant de <b>trace</b> W3C dès
+        /// qu'une trace est en cours, et non l'identifiant de requête de Kestrel (NTR-139).
+        /// </summary>
+        /// <param name="context">Contexte de la requête.</param>
+        /// <returns>Trente-deux caractères hexadécimaux, ou l'identifiant Kestrel à défaut.</returns>
+        /// <remarks>
+        /// La distinction décide de tout. <c>TraceIdentifier</c> est propre à la connexion Kestrel
+        /// et n'apparaît dans aucune trace : un utilisateur le signalant ne menait donc nulle part,
+        /// alors que le volet 3 de l'epic en fait le point de jonction entre l'erreur vue par
+        /// l'utilisateur et la trace serveur.
+        /// <para>
+        /// Le repli couvre l'absence de trace en cours — observabilité désactivée, ou appel hors
+        /// pipeline HTTP. Mieux vaut un identifiant qui ne mène qu'aux journaux que pas
+        /// d'identifiant du tout.
+        /// </para>
+        /// </remarks>
+        private static string TraceId(HttpContext context)
+            => Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+
         /// <summary>Écrit la réponse d'erreur normalisée.</summary>
         /// <param name="context">Contexte de la requête.</param>
         /// <param name="statusCode">Statut HTTP à renvoyer.</param>
@@ -61,7 +82,7 @@ namespace NutritionApi.Api.Middleware
                 // retrouver l'entrée de journal correspondante — ce qui pousse à rendre les messages
                 // plus bavards, l'inverse du but recherché. Un identifiant opaque n'a aucune valeur
                 // pour un attaquant.
-                Extensions = { ["traceId"] = context.TraceIdentifier }
+                Extensions = { ["traceId"] = TraceId(context) }
             };
 
             await context.Response.WriteAsJsonAsync(problem);
