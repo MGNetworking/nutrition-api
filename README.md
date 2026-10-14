@@ -477,12 +477,13 @@ nutrition-api/
 │                                      (realm, client, rôles, comptes de test) et seed-dev.sql
 │                                      (données de test — développement uniquement)
 ├── postman/                           Collection et environnements Postman
-├── .github/workflows/                 CI — tests unitaires, intégration externe, release,
-│                                      déploiement, Release Please
+├── .github/                           workflows/ — CI : tests unitaires, intégration externe,
+│                                      release, déploiement, Release Please ;
+│                                      release-please-config.json et release-please-manifest.json
+│                                      — versionnage et CHANGELOG automatisés
 ├── .claude/                           Règles et skills Claude Code
 ├── nutrition-api.slnx                 Solution
 ├── docker-compose.yml                 PostgreSQL, Redis, Keycloak (+ API sous profil « full »)
-├── release-please-config.json         Versionnage et CHANGELOG automatisés
 ├── version.txt                        Version courante, tenue par Release Please
 ├── CLAUDE.md                          Contexte projet pour Claude Code
 └── LICENSE                            FSL-1.1-ALv2
