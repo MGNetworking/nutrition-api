@@ -206,8 +206,6 @@ données métier de test (utilisateurs, pesées, plans, aliments, repas) réserv
 > L'application n'applique **jamais** les migrations à son démarrage : la base n'évolue qu'au
 > déploiement. En mode Docker, un conteneur one-shot s'en charge avant que l'API ne démarre.
 
-Configuration détaillée : [CONFIGURATION.md](CONFIGURATION.md).
-
 ---
 
 ## Tester l'API
@@ -466,6 +464,5 @@ nutrition-api/
 |---|---|
 | [Documentation du projet](https://mgnetworking.github.io/docs-nutrition/) | Design des quatre couches, règles métier, features, backlog |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Environnement local, workflow Git, conventions de commit |
-| [CONFIGURATION.md](CONFIGURATION.md) | Fichiers de configuration, variables d'environnement, installation |
 | [CHANGELOG.md](CHANGELOG.md) | Historique des versions |
 | [LICENSE](LICENSE) | Conditions d'utilisation — FSL-1.1-ALv2 |

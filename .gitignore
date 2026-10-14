@@ -169,8 +169,5 @@ secrets.json
 coverage/
 TestResults/
 
-# Fichiers locaux
-CONFIGURATION.md
-
 # Passations de session Claude Code — locales, jamais versionnees (voir CLAUDE.md)
 .claude/sessions/

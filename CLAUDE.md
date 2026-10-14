@@ -81,7 +81,7 @@ contexte s'appuie sur : ce fichier (règles et décisions), `memory/` (contexte 
 
 Seules les **versions d'images** doivent rester alignées entre le docker-compose et les manifests K3s.
 
-> Les mentions « Kubernetes » dans `CONFIGURATION.md` et les docs de design sont **correctes** (K3s = Kubernetes allégé) — ne pas les retirer.
+> Les mentions « Kubernetes » dans les docs de design sont **correctes** (K3s = Kubernetes allégé) — ne pas les retirer.
 
 ---
 
