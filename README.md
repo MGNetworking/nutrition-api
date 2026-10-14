@@ -435,7 +435,8 @@ nutrition-api/
 ├── src/
 │   ├── NutritionApi.Domain/           Entités, value objects, enums — aucune dépendance
 │   ├── NutritionApi.Application/      Services, DTOs, interfaces
-│   ├── NutritionApi.Infrastructure/   EF Core, migrations, repositories, cache, jobs
+│   ├── NutritionApi.Infrastructure/   EF Core, migrations (+ Dockerfile.migrations), repositories,
+│   │                                  cache, jobs
 │   └── NutritionApi.Api/              Controllers, middlewares, Program.cs
 ├── tests/                             Un projet de tests par couche, un pour le niveau 3,
 │                                      + coverage.runsettings
@@ -450,7 +451,6 @@ nutrition-api/
 ├── .claude/                           Règles et skills Claude Code
 ├── nutrition-api.slnx                 Solution
 ├── docker-compose.yml                 PostgreSQL, Redis, Keycloak (+ API sous profil « full »)
-├── Dockerfile.migrations              Conteneur one-shot d'application des migrations
 ├── release-please-config.json         Versionnage et CHANGELOG automatisés
 ├── version.txt                        Version courante, tenue par Release Please
 ├── CLAUDE.md                          Contexte projet pour Claude Code

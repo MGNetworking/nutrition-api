@@ -83,7 +83,7 @@ services:
     profiles: ["full"]
     build:
       context: .
-      dockerfile: Dockerfile.migrations
+      dockerfile: src/NutritionApi.Infrastructure/Dockerfile.migrations
     container_name: nutrition-migrations
     environment:
       # Lue en priorité par DesignTimeDbContextFactory
