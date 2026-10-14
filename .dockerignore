@@ -24,8 +24,7 @@ Dockerfile*
 .dockerignore
 scripts/
 postman/
-keycloak/
-seed-dev.sql
+dev/
 *.md
 
 # Tests — l'image de production n'en a pas besoin

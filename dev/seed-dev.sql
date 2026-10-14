@@ -6,10 +6,10 @@
 --    apparaîtraient dans les exports RGPD.
 --
 -- À exécuter APRÈS les migrations EF Core (les tables doivent exister) :
---   psql -h localhost -p 5445 -U postgres -d nutrition_dev -f seed-dev.sql
+--   psql -h localhost -p 5445 -U postgres -d nutrition_dev -f dev/seed-dev.sql
 --
 -- Les keycloak_id correspondent aux identifiants fixes des utilisateurs
--- déclarés dans keycloak/realm-export.json. Les deux fichiers doivent
+-- déclarés dans dev/keycloak/realm-export.json. Les deux fichiers doivent
 -- rester synchronisés.
 --
 -- Le script est idempotent : il peut être relancé sans erreur.

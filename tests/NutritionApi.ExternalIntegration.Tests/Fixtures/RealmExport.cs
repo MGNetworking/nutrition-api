@@ -3,7 +3,7 @@ namespace NutritionApi.ExternalIntegration.Tests.Fixtures;
 using System.Text.Json;
 
 /// <summary>
-/// Lit <c>keycloak/realm-export.json</c> — la source de vérité des identités du realm.
+/// Lit <c>dev/keycloak/realm-export.json</c> — la source de vérité des identités du realm.
 /// </summary>
 /// <remarks>
 /// Ces valeurs étaient auparavant recopiées en constantes dans les fixtures. Elles existaient donc
@@ -83,7 +83,7 @@ public static class RealmExport
         }
 
         throw new InvalidOperationException(
-            $"Le client « {clientId} » n'existe pas dans keycloak/realm-export.json. "
+            $"Le client « {clientId} » n'existe pas dans dev/keycloak/realm-export.json. "
             + "La fixture et le realm ont divergé.");
     }
 
@@ -98,7 +98,7 @@ public static class RealmExport
         }
 
         throw new InvalidOperationException(
-            $"Le compte « {username} » n'existe pas dans keycloak/realm-export.json.");
+            $"Le compte « {username} » n'existe pas dans dev/keycloak/realm-export.json.");
     }
 
     /// <summary>Charge l'export copié à côté de l'assembly de tests.</summary>

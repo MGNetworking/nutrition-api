@@ -19,7 +19,7 @@ using System.Text.Json.Serialization;
 /// </remarks>
 public sealed class KeycloakTokens : IDisposable
 {
-    // Toutes les valeurs ci-dessous sont lues dans keycloak/realm-export.json, jamais ressaisies.
+    // Toutes les valeurs ci-dessous sont lues dans dev/keycloak/realm-export.json, jamais ressaisies.
     // Un renommage dans l'export fait échouer le test avec un message qui nomme le compte manquant,
     // au lieu de le laisser interroger un identifiant qui n'existe plus.
 

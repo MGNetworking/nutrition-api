@@ -65,7 +65,7 @@ success "Migrations appliquées"
 info "Chargement des données de développement"
 docker exec -i nutrition-postgres \
     psql -U postgres -d nutrition_dev -v ON_ERROR_STOP=1 --quiet \
-    < seed-dev.sql >/dev/null
+    < dev/seed-dev.sql >/dev/null
 success "Données de test chargées"
 
 printf "\n"

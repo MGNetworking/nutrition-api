@@ -122,7 +122,7 @@ public sealed class IntegrationFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:DefaultConnection", Database.ConnectionString);
         builder.UseSetting("Redis:ConnectionString", $"{RedisEndpoint},defaultDatabase={RedisDatabaseIndex}");
 
-        // Ce qui décrit le realm est lu dans keycloak/realm-export.json, jamais ressaisi : le placer
+        // Ce qui décrit le realm est lu dans dev/keycloak/realm-export.json, jamais ressaisi : le placer
         // dans appsettings.ExternalIntegration.json recréerait la duplication qu'on supprime.
         builder.UseSetting("Keycloak:Authority", KeycloakTokens.Authority);
         builder.UseSetting("Keycloak:AdminBaseUrl", KeycloakTokens.AdminBaseUrl);

@@ -441,7 +441,9 @@ nutrition-api/
 │                                      + coverage.runsettings
 ├── scripts/                           Scripts d'environnement (dev-up, dev-down, dev-reset,
 │                                      docker-up, test-integration, lib.sh)
-├── keycloak/                          realm-export.json — realm, client, rôles, comptes de test
+├── dev/                               Environnement de développement : keycloak/realm-export.json
+│                                      (realm, client, rôles, comptes de test) et seed-dev.sql
+│                                      (données de test — développement uniquement)
 ├── postman/                           Collection et environnements Postman
 ├── .github/workflows/                 CI — tests unitaires, intégration externe, release,
 │                                      déploiement, Release Please
@@ -452,8 +454,7 @@ nutrition-api/
 ├── release-please-config.json         Versionnage et CHANGELOG automatisés
 ├── version.txt                        Version courante, tenue par Release Please
 ├── CLAUDE.md                          Contexte projet pour Claude Code
-├── LICENSE                            FSL-1.1-ALv2
-└── seed-dev.sql                       Données de test — développement uniquement
+└── LICENSE                            FSL-1.1-ALv2
 ```
 
 ---

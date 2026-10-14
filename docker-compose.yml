@@ -6,7 +6,7 @@
 # Séquence de démarrage :
 #   docker compose up -d
 #   dotnet ef database update --project src/NutritionApi.Infrastructure --startup-project src/NutritionApi.Api
-#   psql -h localhost -p 5445 -U postgres -d nutrition_dev -f seed-dev.sql
+#   psql -h localhost -p 5445 -U postgres -d nutrition_dev -f dev/seed-dev.sql
 #   dotnet run --project src/NutritionApi.Api
 
 services:
@@ -62,7 +62,7 @@ services:
     ports:
       - "8778:8080"
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./dev/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
       # Le endpoint de santé est exposé sur le port de management (9000), pas sur 8080.
       # L'image ne contient ni curl ni wget : on passe par /dev/tcp de bash.
