@@ -26,6 +26,7 @@ API SaaS de gestion nutritionnelle — backend ASP.NET Core 10, architecture DDD
 - [Architecture](#architecture)
 - [Démarrage rapide](#démarrage-rapide)
 - [Environnements](#environnements)
+- [Conteneurs Docker](#conteneurs-docker)
 - [Base de données](#base-de-données)
 - [Tester l'API](#tester-lapi)
 - [Tests automatisés](#tests-automatisés)
@@ -179,6 +180,36 @@ Les deux modes partagent les mêmes services conteneurisés :
 | `test-admin` | `admin` | Free |
 
 Détail complet du setup local : [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Conteneurs Docker
+
+Le projet définit **cinq conteneurs**, tous déclarés dans `docker-compose.yml`. Les trois premiers
+forment l'infrastructure ; les deux derniers n'existent que dans le profil Compose `full`.
+
+| Conteneur | Image | Rôle | Port hôte |
+|---|---|---|---|
+| `nutrition-postgres` | `postgres:16` | Base de données relationnelle (base `nutrition_dev`, volume `postgres-data`) | 5445 |
+| `nutrition-redis` | `redis:7` | Cache applicatif (volume `redis-data`) | 6336 |
+| `nutrition-keycloak` | `quay.io/keycloak/keycloak:26.0` | Authentification et jetons JWT. Le realm, les rôles et les comptes de test sont importés à chaque création depuis `dev/keycloak/realm-export.json` ; aucun volume, l'environnement est donc reproductible | 8778 |
+| `nutrition-migrations` | construite depuis `src/NutritionApi.Infrastructure/Dockerfile.migrations` | Applique les migrations EF Core, puis s'arrête (code de sortie 0). Utilise le SDK .NET, absent de l'image de l'API | — |
+| `nutrition-api` | construite depuis `src/NutritionApi.Api/Dockerfile` | L'API elle-même, build multi-étapes sur l'image `aspnet` | 5100 |
+
+**Dans quel contexte chacun tourne :**
+
+| Contexte | Lancement | Conteneurs démarrés |
+|---|---|---|
+| Développement quotidien | `./scripts/dev-up.sh` | postgres, redis, keycloak — l'API tourne sur le host |
+| Valider l'image, reproduire la production | `./scripts/docker-up.sh` | les cinq, dans l'ordre postgres → migrations → api |
+| Tests de niveau 3, en local comme en CI | `./scripts/test-integration.sh` | postgres, redis, keycloak — les tests créent leur propre base éphémère ; `nutrition_dev` n'est jamais touchée |
+| Production | K3s sur VPS | hors de ce dépôt ; les versions d'images du compose restent alignées avec les manifests K3s |
+
+`nutrition-migrations` est un conteneur à usage unique : `nutrition-api` ne démarre qu'après sa réussite
+(`service_completed_successfully`). L'API n'applique jamais ses migrations elle-même, et ce schéma
+préfigure le Job Kubernetes de production.
+
+L'arrêt se fait par `./scripts/dev-down.sh`, et `./scripts/dev-reset.sh` repart d'une base vierge.
 
 ---
 
