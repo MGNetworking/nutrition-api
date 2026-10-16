@@ -1,10 +1,12 @@
 namespace NutritionApi.Infrastructure.Persistence.Interceptors;
 
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using NutritionApi.Infrastructure.Observability;
 using System.Data.Common;
 
 /// <summary>
-/// Traduit les échecs d'ouverture de connexion PostgreSQL en exceptions applicatives.
+/// Traduit les échecs d'ouverture de connexion PostgreSQL en exceptions applicatives, et compte les
+/// connexions rejetées.
 /// </summary>
 /// <remarks>
 /// Complément indispensable de <see cref="DatabaseExceptionInterceptor"/>, qui n'intercepte que les
@@ -20,13 +22,27 @@ using System.Data.Common;
 /// table de correspondance entre échecs PostgreSQL et exceptions applicatives, quelle que soit
 /// l'étape où l'échec survient.
 /// </para>
+/// <para>
+/// NTR-141 greffe ici le suivi des connexions <b>rejetées</b> : ce point est le seul où le code
+/// constate qu'une ouverture a été refusée — base injoignable, pool épuisé. La mesure est
+/// <b>facultative</b> : sans conteneur de mesures, la traduction reste assurée.
+/// </para>
 /// </remarks>
 public sealed class DatabaseConnectionExceptionInterceptor : DbConnectionInterceptor
 {
+    private readonly InfrastructureMetrics? _metriques;
+
+    /// <summary>Construit l'intercepteur.</summary>
+    /// <param name="metriques">
+    /// Instruments de la couche Infrastructure, pour compter les connexions rejetées. <c>null</c>
+    /// laisse la traduction seule — utile hors du conteneur de mesures.
+    /// </param>
+    public DatabaseConnectionExceptionInterceptor(InfrastructureMetrics? metriques = null) => _metriques = metriques;
+
     /// <inheritdoc />
     public override void ConnectionFailed(DbConnection connection, ConnectionErrorEventData eventData)
     {
-        var traduite = DatabaseExceptionInterceptor.Translate(eventData.Exception);
+        var traduite = TraduireEtCompter(eventData.Exception);
 
         if (traduite is not null)
             throw traduite;
@@ -38,8 +54,28 @@ public sealed class DatabaseConnectionExceptionInterceptor : DbConnectionInterce
         ConnectionErrorEventData eventData,
         CancellationToken cancellationToken = default)
     {
-        var traduite = DatabaseExceptionInterceptor.Translate(eventData.Exception);
+        var traduite = TraduireEtCompter(eventData.Exception);
 
         return traduite is null ? Task.CompletedTask : Task.FromException(traduite);
+    }
+
+    /// <summary>
+    /// Traduit un échec d'ouverture et, s'il s'agit bien d'une connexion rejetée, l'enregistre.
+    /// </summary>
+    /// <param name="exception">Exception levée à l'ouverture.</param>
+    /// <returns>L'exception applicative à lever, ou <c>null</c> pour laisser passer l'originale.</returns>
+    /// <remarks>
+    /// Méthode publique, comme <see cref="DatabaseExceptionInterceptor.Translate"/> : c'est le point
+    /// de décision, extrait du branchement EF Core pour être éprouvé sans base réelle. Ce qui n'est
+    /// pas traduit — donc pas imputable à la base — n'est pas compté comme un rejet.
+    /// </remarks>
+    public Exception? TraduireEtCompter(Exception exception)
+    {
+        var traduite = DatabaseExceptionInterceptor.Translate(exception);
+
+        if (traduite is not null)
+            _metriques?.ConnexionRejetee();
+
+        return traduite;
     }
 }

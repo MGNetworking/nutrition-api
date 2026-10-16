@@ -5,6 +5,7 @@ using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NutritionApi.Application.Interfaces;
 using NutritionApi.Application.Interfaces.ExternalServices;
@@ -37,12 +38,17 @@ public static class InfrastructureExtensions
         //   - DatabaseExceptionInterceptor      → échec d'une commande (serveur joignable)
         //   - DatabaseConnectionExceptionInterceptor → échec d'ouverture de connexion (serveur arrêté)
         // Le second couvre le cas qu'IT-EXT-14 a révélé : sans lui, une base arrêtée repartait en 500.
-        services.AddDbContext<AppDbContext>(options =>
+        //
+        // La surcharge qui reçoit le fournisseur de services est nécessaire aux deux intercepteurs
+        // qui dépendent du conteneur (NTR-141) : le compteur de connexions rejetées, et le seuil de
+        // lenteur. Les résoudre ici évite de les construire à la main dans la couche API.
+        services.AddDbContext<AppDbContext>((provider, options) =>
             options.UseNpgsql(connectionString)
                    .UseSnakeCaseNamingConvention()
                    .AddInterceptors(
                         new DatabaseExceptionInterceptor(),
-                        new DatabaseConnectionExceptionInterceptor()));
+                        new DatabaseConnectionExceptionInterceptor(provider.GetRequiredService<InfrastructureMetrics>()),
+                        provider.GetRequiredService<SlowQueryInterceptor>()));
 
         // L'unité de travail est le DbContext lui-même — même instance dans la portée de la requête
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -76,6 +82,18 @@ public static class InfrastructureExtensions
         // vivent aussi longtemps que le processus, et le filtre Hangfire ci-dessous en dépend.
         services.AddSingleton<InfrastructureMetrics>();
         services.AddSingleton<JobMetricsFilter>();
+
+        // ── Observabilité de la base de données (NTR-141) ─────────────────────
+        // Détection des requêtes lentes, et surveillance périodique des connexions et de la
+        // croissance des tables Hangfire. Le seuil de lenteur est lu ici plutôt que par
+        // l'intercepteur : sa valeur est un réglage, pas une préoccupation de la classe.
+        var seuilDeLenteur = configuration.GetValue(SlowQueryInterceptor.CleDuSeuil, SlowQueryInterceptor.SeuilParDefautMs);
+
+        services.AddSingleton(provider => new SlowQueryInterceptor(
+            provider.GetRequiredService<ILogger<SlowQueryInterceptor>>(),
+            seuilDeLenteur));
+
+        services.AddHostedService<DatabaseSupervisionService>();
 
         // ── Hangfire ──────────────────────────────────────────────────────────
         // Jobs planifiés persistés dans PostgreSQL (schéma dédié, tables créées au
