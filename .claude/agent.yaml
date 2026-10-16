@@ -1,0 +1,20 @@
+# Généré par `agent init`. Versionné avec le projet, il ne contient AUCUN secret :
+# seulement des adresses et des NOMS de variables d'environnement.
+
+# Dossier des comptes rendus d'exécution (relatif au projet) ; ignoré par git.
+logs: .agent-runs
+
+model:
+  # NOM de la variable d'environnement qui contient la clé API Anthropic.
+  api_key_env: ANTHROPIC_API_KEY
+
+# Le gestionnaire de projet d'où viennent les tâches (`agent run --jira CLÉ`).
+tracker:
+  # Seule valeur acceptée pour l'instant.
+  type: jira
+  # Adresse de ton Jira.
+  url: https://maxime-ghalem.atlassian.net
+  # NOM de la variable qui contient l'utilisateur Jira (son e-mail).
+  user_env: JIRA_USERNAME
+  # NOM de la variable qui contient le jeton d'API Jira.
+  token_env: JIRA_API_TOKEN

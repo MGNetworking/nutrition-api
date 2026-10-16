@@ -171,3 +171,4 @@ TestResults/
 
 # Passations de session Claude Code — locales, jamais versionnees (voir CLAUDE.md)
 .claude/sessions/
+.agent-runs/

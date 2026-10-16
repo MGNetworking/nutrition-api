@@ -1,0 +1,31 @@
+# Profil .NET : comment vérifier un projet .NET.
+name: dotnet
+detect: ["*.slnx"]   # fichier à la racine qui reconnaît le projet (solution .NET 10)
+# Fichiers de test : un fichier existant ne peut qu'être complété (le moteur le vérifie à chaque tour).
+# L'agent peut ajouter des tests et créer de nouveaux fichiers, pas modifier ni supprimer l'existant.
+test_files: ["tests/**/*.cs"]
+# Lancé une seule fois, avant l'état initial (pas à chaque tour, et hors de `done`).
+# Un échec arrête tout : le projet est considéré comme cassé avant même de commencer.
+setup:
+  restore: dotnet restore nutrition-api.slnx
+# `checks` nomme les commandes ; `done` liste celles qui doivent toutes réussir, dans l'ordre.
+# L'ordre compte : la vérification s'arrête à la première commande en échec,
+# donc `test --no-build` ne tourne jamais sur un build cassé.
+# Le filtre `Level!=3` écarte le niveau 3 (docker-compose : PostgreSQL, Redis, Keycloak), réservé à `final`.
+# Pas de `lint` : le projet n'embarque ni dotnet format ni analyseur, en local comme en CI.
+checks:
+  build: { run: dotnet build nutrition-api.slnx --nologo --no-restore --configuration Release, timeout: 300 }
+  test: { run: dotnet test nutrition-api.slnx --no-build --nologo --configuration Release --filter "Level!=3", timeout: 900 }
+  # Rejoue ce que fait .github/workflows/ci-pr.yml, dans le même ordre : niveaux 1 et 2, niveau 3 sous
+  # docker-compose, fusion des rapports et contrôle des seuils de tests/coverage.runsettings.
+  # C'est le seul endroit où la couverture par couche est mesurée : un rapport partiel (niveau 3 exclu)
+  # donnerait un chiffre faux pour Infrastructure. Rejoue aussi le contrôle qui fait échouer la CI.
+  # Sous Windows, il faut nommer Git Bash : `bash` seul y lancerait WSL (Linux), sans Docker ni SDK .NET.
+  ci: { run: '"C:\Program Files\Git\bin\bash.exe" scripts/test-all.sh', timeout: 1800 }
+done: [build, test]
+# Lancées une seule fois, quand `done` est vert et le projet modifié : les vérifications trop lentes
+# pour chaque tour. `ci` monte la pile docker-compose et couvre les trois niveaux — trop long ici.
+final: [ci]
+timeout: 600   # secondes, par commande sans timeout propre : au-delà, elle est arrêtée et comptée en échec
+# Variables ajoutées à l'environnement de chaque commande (setup compris) : pas de couleurs, pas de télémétrie.
+env: { NO_COLOR: "1", DOTNET_CLI_TELEMETRY_OPTOUT: "1" }
