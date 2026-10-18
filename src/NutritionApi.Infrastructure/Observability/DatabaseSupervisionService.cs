@@ -5,16 +5,23 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
-/// <summary>Relève de l'état de la base : connexions ouvertes et taille des tables Hangfire.</summary>
-/// <param name="ConnexionsActives">Connexions en train d'exécuter une requête.</param>
-/// <param name="ConnexionsEnAttente">Connexions actives bloquées, en attente d'une ressource.</param>
-/// <param name="ConnexionsInactives">Connexions ouvertes mais au repos.</param>
-/// <param name="TablesHangfire">Nombre de lignes par table du schéma <c>hangfire</c>.</param>
+/// <summary>Relève de l'état de la base : connexions ouvertes et volume des tables Hangfire.</summary>
+/// <param name="ConnexionsActives">Sessions en train d'exécuter une requête, hors connexion de la relève.</param>
+/// <param name="ConnexionsBloquees">Sessions actives bloquées sur un verrou ou une ressource.</param>
+/// <param name="ConnexionsInactives">Sessions ouvertes mais au repos.</param>
+/// <param name="TablesHangfire">
+/// Nombre de lignes estimé par table du schéma <c>hangfire</c>, jamais négatif.
+/// </param>
+/// <param name="TaillesDisqueHangfire">
+/// Taille sur disque de chaque table, en octets, index et TOAST compris. Mêmes clés que
+/// <paramref name="TablesHangfire"/>.
+/// </param>
 public sealed record EtatBaseDonnees(
     long ConnexionsActives,
-    long ConnexionsEnAttente,
+    long ConnexionsBloquees,
     long ConnexionsInactives,
-    IReadOnlyDictionary<string, long> TablesHangfire);
+    IReadOnlyDictionary<string, long> TablesHangfire,
+    IReadOnlyDictionary<string, long> TaillesDisqueHangfire);
 
 /// <summary>
 /// Rend visible ce que fait PostgreSQL (NTR-141) : suivi des connexions et croissance des tables du
@@ -26,17 +33,24 @@ public sealed record EtatBaseDonnees(
 /// </para>
 /// <list type="bullet">
 /// <item>
-/// l'état des connexions — actives, en attente, inactives — tel que le serveur le voit, lu dans
+/// l'état des connexions — actives, bloquées, inactives — tel que le serveur le voit, lu dans
 /// <c>pg_stat_activity</c>. Complémentaire des mesures du pool publiées par Npgsql (NTR-138) :
-/// celles-ci décrivent les connexions du processus, celles-là les sessions reçues par le serveur.
+/// celles-ci décrivent les requêtes du processus qui attendent une connexion libre, celles-là les
+/// sessions reçues par le serveur. « Bloquée » est donc une session du serveur arrêtée sur un verrou
+/// ou une ressource, jamais l'attente d'une connexion du pool. La connexion de la relève elle-même
+/// est exclue des trois états.
 /// </item>
 /// <item>
-/// la taille des tables <c>job</c>, <c>state</c> et <c>counter</c>. Hangfire n'embarque aucune purge
-/// configurée : ces tables grossissent indéfiniment, et une taille anormale se voit d'autant mieux
-/// qu'elle est publiée comme une tendance — c'est le rôle de la jauge
-/// <c>nutrition.hangfire.rows</c>.
+/// le volume des tables <c>job</c>, <c>state</c> et <c>counter</c>. Hangfire n'embarque aucune purge
+/// configurée : ces tables grossissent indéfiniment, et un volume anormal se voit d'autant mieux
+/// qu'il est publié comme une tendance — c'est le rôle des jauges <c>nutrition.hangfire.rows</c> et
+/// <c>nutrition.hangfire.bytes</c>.
 /// </item>
 /// </list>
+/// <para>
+/// Une relève décrit chaque table par ses lignes estimées <em>et</em> sa taille disque : c'est
+/// <see cref="CollecterAsync"/>, la seule forme produite contre PostgreSQL.
+/// </para>
 /// <para>
 /// Une relève qui échoue — base momentanément injoignable, schéma <c>hangfire</c> pas encore créé —
 /// est journalisée puis retentée au cycle suivant : la supervision ne doit jamais faire tomber
@@ -51,14 +65,17 @@ public sealed class DatabaseSupervisionService : BackgroundService
     /// <summary>Intervalle entre deux relèves, en secondes, à défaut de configuration.</summary>
     public const int PeriodeParDefautSecondes = 300;
 
-    /// <summary>Nombre de lignes au-delà duquel une table Hangfire déclenche un avertissement.</summary>
-    public const long SeuilAlerteParDefaut = 1_000_000;
+    /// <summary>
+    /// Taille sur disque, en octets, à partir de laquelle une table Hangfire déclenche un
+    /// avertissement : 512 Mo. Sous ce seuil, Hangfire a purgé normalement.
+    /// </summary>
+    public const long SeuilAlerteParDefautOctets = 536_870_912;
 
     private readonly ILogger<DatabaseSupervisionService> _logger;
     private readonly InfrastructureMetrics _metriques;
     private readonly string _connectionString;
     private readonly TimeSpan _periode;
-    private readonly long _seuilAlerte;
+    private readonly long _seuilAlerteOctets;
 
     /// <summary>Construit le service de supervision.</summary>
     /// <param name="logger">Journaliseur.</param>
@@ -76,7 +93,7 @@ public sealed class DatabaseSupervisionService : BackgroundService
             ?? throw new InvalidOperationException("La chaîne de connexion 'DefaultConnection' est absente.");
 
         _periode = TimeSpan.FromSeconds(section.GetValue("SupervisionIntervalSeconds", PeriodeParDefautSecondes));
-        _seuilAlerte = section.GetValue("HangfireRowsWarningThreshold", SeuilAlerteParDefaut);
+        _seuilAlerteOctets = section.GetValue("HangfireSizeWarningThresholdBytes", SeuilAlerteParDefautOctets);
         _logger = logger;
         _metriques = metriques;
     }
@@ -120,7 +137,7 @@ public sealed class DatabaseSupervisionService : BackgroundService
 
     /// <summary>Interroge PostgreSQL et retourne l'état courant.</summary>
     /// <param name="cancellationToken">Jeton d'annulation.</param>
-    /// <returns>La relève : connexions par état et taille des tables Hangfire.</returns>
+    /// <returns>La relève : connexions par état et volume des tables Hangfire.</returns>
     /// <exception cref="NpgsqlException">La base est injoignable.</exception>
     public async Task<EtatBaseDonnees> CollecterAsync(CancellationToken cancellationToken = default)
     {
@@ -130,7 +147,12 @@ public sealed class DatabaseSupervisionService : BackgroundService
         var connexions = await LireConnexionsAsync(connexion, cancellationToken);
         var tables = await LireTablesHangfireAsync(connexion, cancellationToken);
 
-        return new EtatBaseDonnees(connexions.Actives, connexions.EnAttente, connexions.Inactives, tables);
+        return new EtatBaseDonnees(
+            connexions.Actives,
+            connexions.Bloquees,
+            connexions.Inactives,
+            tables.Lignes,
+            tables.Octets);
     }
 
     /// <summary>Publie une relève : une mesure par état, et une entrée de journal.</summary>
@@ -142,47 +164,63 @@ public sealed class DatabaseSupervisionService : BackgroundService
     public void Rapporter(EtatBaseDonnees releve)
     {
         _metriques.Connexions("active", releve.ConnexionsActives);
-        _metriques.Connexions("waiting", releve.ConnexionsEnAttente);
+        _metriques.Connexions("blocked", releve.ConnexionsBloquees);
         _metriques.Connexions("idle", releve.ConnexionsInactives);
 
         _logger.LogInformation(
-            "Connexions PostgreSQL — actives : {Actives}, en attente : {EnAttente}, inactives : {Inactives}.",
+            "Connexions PostgreSQL — actives : {Actives}, bloquées : {Bloquees}, inactives : {Inactives}.",
             releve.ConnexionsActives,
-            releve.ConnexionsEnAttente,
+            releve.ConnexionsBloquees,
             releve.ConnexionsInactives);
 
         foreach (var (table, lignes) in releve.TablesHangfire)
         {
-            _metriques.TailleTableHangfire(table, lignes);
+            _metriques.LignesTableHangfire(table, lignes);
 
-            _logger.LogInformation("Table hangfire.{Table} : {Lignes} lignes.", table, lignes);
+            var octets = releve.TaillesDisqueHangfire.TryGetValue(table, out var taille) ? taille : 0;
 
-            if (lignes >= _seuilAlerte)
+            _metriques.OctetsTableHangfire(table, octets);
+
+            _logger.LogInformation(
+                "Table hangfire.{Table} : {Lignes} lignes estimées, {Octets} octets sur disque.",
+                table,
+                lignes,
+                octets);
+
+            // Le seuil porte sur la taille disque seule : compter les lignes d'une table qui grossit
+            // coûterait d'autant plus cher qu'elle est grosse, et une table volumineuse mais compacte
+            // est normale. Le nombre de lignes reste publié comme mesure, sans avertissement.
+            if (octets >= _seuilAlerteOctets)
             {
                 _logger.LogWarning(
-                    "Table hangfire.{Table} volumineuse : {Lignes} lignes (seuil {Seuil}) — purge à prévoir.",
+                    "Table hangfire.{Table} volumineuse : {Octets} octets sur disque (seuil {Seuil}) — purge à prévoir.",
                     table,
-                    lignes,
-                    _seuilAlerte);
+                    octets,
+                    _seuilAlerteOctets);
             }
         }
     }
 
     /// <summary>
-    /// Compte les sessions reçues par le serveur, par état. « En attente » désigne une session active
-    /// bloquée sur une ressource — un verrou, un entrée-sortie —, à distinguer d'une session au repos.
+    /// Compte les sessions reçues par le serveur, par état. « Bloquées » désigne une session active
+    /// arrêtée sur une ressource — un verrou, une entrée-sortie —, à distinguer d'une session au
+    /// repos. La connexion de la relève ne se compte pas elle-même.
     /// </summary>
-    private static async Task<(long Actives, long EnAttente, long Inactives)> LireConnexionsAsync(
+    private static async Task<(long Actives, long Bloquees, long Inactives)> LireConnexionsAsync(
         NpgsqlConnection connexion,
         CancellationToken cancellationToken)
     {
+        // « pid <> pg_backend_pid() » : sans cette exclusion, la connexion qui exécute la requête
+        // apparaîtrait active, et la relève se compterait elle-même dans chaque état où elle se
+        // trouve. Toutes les autres sessions de la base sont, elles, comptées.
         const string sql = """
             select
                 count(*) filter (where state = 'active' and wait_event_type is null)     as actives,
-                count(*) filter (where state = 'active' and wait_event_type is not null) as en_attente,
+                count(*) filter (where state = 'active' and wait_event_type is not null) as bloquees,
                 count(*) filter (where state = 'idle')                                   as inactives
             from pg_stat_activity
-            where datname = current_database();
+            where datname = current_database()
+              and pid <> pg_backend_pid();
             """;
 
         await using var commande = new NpgsqlCommand(sql, connexion);
@@ -195,32 +233,41 @@ public sealed class DatabaseSupervisionService : BackgroundService
     }
 
     /// <summary>
-    /// Compte les lignes des trois tables que Hangfire ne purge pas de lui-même. Le schéma
-    /// <c>hangfire</c> est créé par Hangfire au démarrage : son absence fait échouer la requête, que
-    /// l'appelant journalise et rejoue.
+    /// Mesure le volume des trois tables que Hangfire ne purge pas de lui-même. Une seule requête
+    /// catalogue suffit : PostgreSQL tient l'estimation du nombre de lignes et calcule la taille sur
+    /// disque, là où un <c>count(*)</c> lirait toute la table — d'autant plus coûteux qu'elle grossit.
+    /// Le schéma <c>hangfire</c> absent renvoie zéro ligne, sans erreur.
     /// </summary>
-    private static async Task<IReadOnlyDictionary<string, long>> LireTablesHangfireAsync(
-        NpgsqlConnection connexion,
-        CancellationToken cancellationToken)
+    private static async Task<(IReadOnlyDictionary<string, long> Lignes, IReadOnlyDictionary<string, long> Octets)>
+        LireTablesHangfireAsync(NpgsqlConnection connexion, CancellationToken cancellationToken)
     {
+        // n_live_tup est l'estimation suivie par PostgreSQL au fil des insertions ; elle n'est jamais
+        // négative, et rien ne justifie de la recalculer. pg_total_relation_size donne la taille sur
+        // disque, index et TOAST compris — c'est elle que le seuil d'avertissement observe.
         const string sql = """
             select
-                (select count(*) from hangfire.job)     as job,
-                (select count(*) from hangfire.state)   as state,
-                (select count(*) from hangfire.counter) as counter;
+                c.relname::text                       as table,
+                s.n_live_tup                          as lignes,
+                pg_total_relation_size(c.oid)         as octets
+            from pg_class c
+            join pg_namespace n on n.oid = c.relnamespace
+            join pg_stat_user_tables s on s.relid = c.oid
+            where n.nspname = 'hangfire'
+              and c.relname in ('job', 'state', 'counter');
             """;
+
+        var lignes = new Dictionary<string, long>();
+        var octets = new Dictionary<string, long>();
 
         await using var commande = new NpgsqlCommand(sql, connexion);
         await using var lecteur = await commande.ExecuteReaderAsync(cancellationToken);
 
-        if (!await lecteur.ReadAsync(cancellationToken))
-            return new Dictionary<string, long>();
-
-        return new Dictionary<string, long>
+        while (await lecteur.ReadAsync(cancellationToken))
         {
-            ["job"] = lecteur.GetInt64(0),
-            ["state"] = lecteur.GetInt64(1),
-            ["counter"] = lecteur.GetInt64(2)
-        };
+            lignes[lecteur.GetString(0)] = lecteur.GetInt64(1);
+            octets[lecteur.GetString(0)] = lecteur.GetInt64(2);
+        }
+
+        return (lignes, octets);
     }
 }

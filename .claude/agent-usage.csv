@@ -1,0 +1,4 @@
+date,tache,role,modele,resultat,tours,tokens_entree,tokens_cache_lu,tokens_cache_ecrit,tokens_sortie,cout_usd
+2026-10-16T15:56:39+02:00,NTR-141-cycle.md,cycle developpement,deepseek-flash,questions,0,70566,1042816,0,32599,0.0333
+2026-10-16T19:25:50+02:00,NTR-141-cycle.md,cycle developpement,deepseek-flash,questions,0,43836,460672,0,21852,0.0211
+2026-10-17T15:26:20+02:00,NTR-141-cycle.md,cycle developpement,deepseek-flash,done,1,171546,2625152,0,58317,0.0686

@@ -31,11 +31,13 @@ public sealed class InfrastructureMetrics
     private readonly Counter<long> _connexionsRejetees;
     private readonly ObservableGauge<long> _connexionsParEtat;
     private readonly ObservableGauge<long> _lignesParTableHangfire;
+    private readonly ObservableGauge<long> _octetsParTableHangfire;
 
     // Dernières valeurs connues, lues par les jauges au moment de la collecte. Une jauge observable
     // publie un état, pas un cumul : il n'y a rien à additionner, seulement à refléter.
     private readonly ConcurrentDictionary<string, long> _etatsDesConnexions = new();
-    private readonly ConcurrentDictionary<string, long> _taillesDesTablesHangfire = new();
+    private readonly ConcurrentDictionary<string, long> _lignesDesTablesHangfire = new();
+    private readonly ConcurrentDictionary<string, long> _octetsDesTablesHangfire = new();
 
     /// <summary>Construit les instruments.</summary>
     /// <param name="meterFactory">Fabrique fournie par l'hôte.</param>
@@ -61,24 +63,33 @@ public sealed class InfrastructureMetrics
             observeValues: () => _etatsDesConnexions.Select(etat =>
                 new Measurement<long>(etat.Value, new KeyValuePair<string, object?>("state", etat.Key))),
             unit: "{connection}",
-            description: "Connexions PostgreSQL, réparties par état (active, waiting, idle).");
+            description: "Connexions PostgreSQL, réparties par état (active, blocked, idle).");
 
         // Tentatives d'ouverture refusées : la base injoignable, le pool épuisé. Compteur, car
         // chaque rejet est un événement — et c'est le seul des trois états que ce code peut
-        // constater lui-même. Les connexions actives et en attente viennent de la relève.
+        // constater lui-même. Les connexions actives, bloquées et inactives viennent de la relève.
         _connexionsRejetees = compteur.CreateCounter<long>(
             name: "nutrition.db.connections.rejected",
             unit: "{connection}",
             description: "Tentatives de connexion à PostgreSQL rejetées (base injoignable, pool épuisé).");
 
         // Croissance des tables du schéma hangfire (NTR-141). Elles grossissent sans purge : la
-        // tendance est l'information utile, d'où une jauge relue à chaque collecte.
+        // tendance est l'information utile, d'où une jauge relue à chaque collecte. Deux séries
+        // distinctes — le nombre de lignes estimé, et la taille sur disque que le seuil d'alerte
+        // observe : un count(*) coûterait d'autant plus cher que la table est grosse.
         _lignesParTableHangfire = compteur.CreateObservableGauge(
             name: "nutrition.hangfire.rows",
-            observeValues: () => _taillesDesTablesHangfire.Select(table =>
+            observeValues: () => _lignesDesTablesHangfire.Select(table =>
                 new Measurement<long>(table.Value, new KeyValuePair<string, object?>("table", table.Key))),
             unit: "{row}",
-            description: "Nombre de lignes des tables du schéma hangfire, réparties par table.");
+            description: "Nombre de lignes estimé des tables du schéma hangfire, réparties par table.");
+
+        _octetsParTableHangfire = compteur.CreateObservableGauge(
+            name: "nutrition.hangfire.bytes",
+            observeValues: () => _octetsDesTablesHangfire.Select(table =>
+                new Measurement<long>(table.Value, new KeyValuePair<string, object?>("table", table.Key))),
+            unit: "By",
+            description: "Taille sur disque des tables du schéma hangfire, réparties par table.");
     }
 
     /// <summary>Le cache a répondu : la base n'a pas été interrogée.</summary>
@@ -105,17 +116,22 @@ public sealed class InfrastructureMetrics
             new KeyValuePair<string, object?>("outcome", issue));
 
     /// <summary>Publie le nombre de connexions ouvertes pour un état donné.</summary>
-    /// <param name="etat"><c>active</c>, <c>waiting</c> ou <c>idle</c>.</param>
+    /// <param name="etat"><c>active</c>, <c>blocked</c> ou <c>idle</c>.</param>
     /// <param name="nombre">Nombre de connexions dans cet état.</param>
     public void Connexions(string etat, long nombre) => _etatsDesConnexions[etat] = nombre;
 
     /// <summary>Compte une tentative de connexion à PostgreSQL rejetée.</summary>
     public void ConnexionRejetee() => _connexionsRejetees.Add(1);
 
-    /// <summary>Publie le nombre de lignes d'une table du schéma <c>hangfire</c>.</summary>
+    /// <summary>Publie le nombre de lignes estimé d'une table du schéma <c>hangfire</c>.</summary>
     /// <param name="table">Nom de la table — <c>job</c>, <c>state</c> ou <c>counter</c>.</param>
-    /// <param name="lignes">Nombre de lignes.</param>
-    public void TailleTableHangfire(string table, long lignes) => _taillesDesTablesHangfire[table] = lignes;
+    /// <param name="lignes">Nombre de lignes estimé.</param>
+    public void LignesTableHangfire(string table, long lignes) => _lignesDesTablesHangfire[table] = lignes;
+
+    /// <summary>Publie la taille sur disque d'une table du schéma <c>hangfire</c>.</summary>
+    /// <param name="table">Nom de la table — <c>job</c>, <c>state</c> ou <c>counter</c>.</param>
+    /// <param name="octets">Taille sur disque, en octets.</param>
+    public void OctetsTableHangfire(string table, long octets) => _octetsDesTablesHangfire[table] = octets;
 
     /// <summary>
     /// Une seule série, étiquetée par issue : le taux de succès se calcule à la lecture, et
